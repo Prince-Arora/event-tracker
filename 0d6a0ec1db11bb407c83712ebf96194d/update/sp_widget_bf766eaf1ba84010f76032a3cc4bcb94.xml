@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[function() {  /* widget controller */  var c = this;}]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.content-container{
+  height: calc(100vh - 40px);
+  width: 100%;
+}
+
+.content-area{
+  margin: auto;
+	margin-top: 18%;
+  text-align: centre;
+  width: 48%;
+}
+
+.btn-primary{
+	margin: 10px;
+	text-transform: uppercase;
+}
+
+.deploy-text__subtitle{
+  padding-bottom: 25px;
+}
+ 
+
+</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description>/************************************************************
+* Copyright (c) 2019-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/</description>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>cas_homepage_empty</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>cas_homepage_empty</name>
+        <option_schema/>
+        <public>false</public>
+        <roles>x_vmw_cloudservice.vra_catalog_admin,x_vmw_cloudservice.vra_end_user</roles>
+        <script><![CDATA[(function() {
+  /* ulate the 'data' object */
+  /* e.g., data.table = $sp.getValue('table'); */
+
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-10-23 16:36:01</sys_created_on>
+        <sys_id>bf766eaf1ba84010f76032a3cc4bcb94</sys_id>
+        <sys_mod_count>12</sys_mod_count>
+        <sys_name>cas_homepage_empty</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sp_widget_bf766eaf1ba84010f76032a3cc4bcb94</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 12:26:39</sys_updated_on>
+        <template><![CDATA[<div class="content-container" >
+  <div class="content-area" align="center">
+      <cas-clr-icon shape="plus" size="40"></cas-clr-icon>
+      <h3>Request for a deployment to get started</h3><br/>
+      <div class="deploy-text__subtitle">Deployments can be requested from catalog. You can monitor the status of submitted requests, keep track of your deployed resources, and manage those resources using actions.</div>
+      <a href="/page/catalog" class="btn btn-primary">Request >From Catalog</a>
+  </div>
+</div>]]></template>
+    </sp_widget>
+</record_update>

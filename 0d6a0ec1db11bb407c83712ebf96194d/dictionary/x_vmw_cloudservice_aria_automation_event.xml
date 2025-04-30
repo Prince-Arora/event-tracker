@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="5e8484ab9763211059b4b857f053af28" label="Aria Automation Event" max_length="40" name="x_vmw_cloudservice_aria_automation_event" type="collection">
+        <element label="Domain" max_length="32" name="sys_domain" type="domain_id"/>
+        <element label="Schema" max_length="400000" name="schema" type="string"/>
+        <index name="index">
+            <element name="sys_domain"/>
+        </index>
+    </element>
+</database>

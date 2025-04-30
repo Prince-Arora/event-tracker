@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="sys_script_client">
+    <sys_script_client action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <applies_extended>false</applies_extended>
+        <condition/>
+        <description>Display the Base Url field option onLoad from system property..</description>
+        <field>api_token</field>
+        <global>false</global>
+        <isolate_script>true</isolate_script>
+        <messages/>
+        <name>GetUrl</name>
+        <order/>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2020-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+function onLoad() {
+	
+	
+	var ga = new GlideAjax('BaseUrlCheck');
+	ga.addParam('sysparm_name','fetchBaseUrl');
+	ga.getXML(processresp);
+	
+	
+	function processresp(response)
+	
+	{
+		var answer = response.responseXML.documentElement.getAttribute("answer");
+		//alert(answer);
+		answer=answer.replace(/,\s*$/, "");
+		var url_arr=answer.split(',');
+		for(var i=0;i<url_arr.length;i++)
+		
+		{
+			g_form.addOption('cas_url',url_arr[i]+'',url_arr[i]+'');
+		}
+	}
+}
+
+
+]]></script>
+        <sys_class_name>sys_script_client</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2020-04-20 17:07:47</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>787b29692f549010b0f8d2172799b692</sys_id>
+        <sys_mod_count>43</sys_mod_count>
+        <sys_name>GetUrl</sys_name>
+        <sys_overrides/>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_client_787b29692f549010b0f8d2172799b692</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 06:43:32</sys_updated_on>
+        <table>x_vmw_cloudservice_register_cas_organization</table>
+        <type>onLoad</type>
+        <ui_type>0</ui_type>
+        <view/>
+    </sys_script_client>
+</record_update>

@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_macro">
+    <sys_ui_macro action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <category>general</category>
+        <description>/************************************************************&#13;
+* Copyright (c) 2023 VMware, Inc. All Rights Reserved.&#13;
+* You may not use this product except in compliance with the License.&#13;
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.&#13;
+*************************************************************/</description>
+        <media_type/>
+        <name>UpfrontExpense_macro</name>
+        <scoped_name>x_vmw_cloudservice_UpfrontExpense_macro</scoped_name>
+        <sys_class_name>sys_ui_macro</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2023-04-11 08:31:43</sys_created_on>
+        <sys_id>3da3648f2f8e61100f70fe1df699b697</sys_id>
+        <sys_mod_count>152</sys_mod_count>
+        <sys_name>UpfrontExpense_macro</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_ui_macro_3da3648f2f8e61100f70fe1df699b697</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-05-29 13:18:35</sys_updated_on>
+        <xml><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
+
+
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">	 
+<html>
+<head>
+	<title>Pricing Model</title>
+</head>
+<script src="x_vmw_cloudservice.upfront_price.jsdbx" ></script>
+	<body>
+ <!-- <label style="font-size:15px;">Product Name<span style="color:red">*</span></label>
+	
+  <input id="input_val" type="text" style="width: 30%;padding: 12px 20px;margin: 8px;box-sizing: border-box;border:none;border-bottom: 1px solid;"></input><br></br> -->
+	
+  <div style=" font-size:18px;display: inline-block;">Daily Price Estimate</div>
+	<div id="c_val" style="font-size:20px;display: inline-block;margin-left:20px;">0.00</div>
+	<div id="err" style="display:inline-block;"></div>
+	 	
+	<div style="content:\n">
+  <button id="calculate" style="border-radius:6px;color:white;padding: 10px;margin-left:5px;text-align: center;text-decoration: none;font-size: 12px;display: inline-block;background-color:#1560BD;margin-top:10px;">CALCULATE</button>
+	<button id="update" style="border-radius:6px;color:white;padding: 10px;margin-left:5px;text-align: center;text-decoration: none;display:none;font-size: 12px;background-color:#1560BD;margin-top:10px;">UPDATE</button>
+  <button  style="border-color:#1560BD ;border-radius:6px;color: #1560BD;padding: 10px;margin-left:5px;text-align: center;text-decoration: none;display: inline-block;font-size: 12px;background-color:white;margin-top:10px;" id="myBtn" disabled='true'>DETAILS</button>
+	</div>
+	
+<div id="myModal" style=" display: none; position: fixed;z-index: 1040; padding-top: 100px; left: 0;top: 0;width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+
+  <div style="background-color: #fefefe; margin: auto; border: 1px solid #888; min-width:350px;width: 40%;overflow:hidden;">
+	
+   <div style="padding: 25px;padding-bottom:0px;">
+		  
+    <span id="close" style="color: #aaaaaa;float: right;font-size: 28px;font-weight: bold;" >x</span>
+	   <h3>Daily Price Estimate</h3>
+	  
+	  <div style="margin-top:20px;"><p style="border:blue; border-radius:5px; border-width:1px; border-style:solid;background-color:#D4FAFA;font-size:15px;padding:8px;width:95%;color:#87AFC7;">&#x1F6C8; Guest OS and one time prices are not included in this estimate.</p></div>
+	 
+	<div id="abc" style="margin-top:20px;"></div>
+		  
+	  </div>
+	 
+	  <button id="close1" style="border-radius:4px;color: white;background-color:rgb(21, 96, 189);padding: 6px;text-align: center;text-decoration: none;display: inline-block;font-size: 12px;float: right;margin-right:16px;margin-bottom:18px;">CLOSE</button> 
+	
+	 </div>
+
+</div>
+
+<script>
+	
+var modal = document.getElementById("myModal");
+
+var btn = document.getElementById("myBtn");
+	
+var calculate=document.getElementById("calculate");
+	
+var update=document.getElementById("update");
+
+var c_val=document.getElementById("c_val");	
+
+var input_val=document.getElementById("input_val");	
+	
+var close_btn=document.getElementById("close");
+	
+var close_btn1=document.getElementById("close1");
+	
+const err=document.getElementById("err");	
+	
+var data='';
+
+btn.onmouseenter=function(){
+	btn.style.background="#ECECEC";
+	btn.style.color="black";
+	}
+	
+btn.onmouseleave=function(){
+	btn.style.background="white";
+	btn.style.color="#1560BD";
+}
+	
+calculate.onmouseenter=function(){
+	calculate.style.background="#00004d";
+	}
+	
+calculate.onmouseleave=function(){
+	calculate.style.background="#1560BD";
+}	
+
+	
+close_btn.onmouseenter=function(){
+	close_btn.style.color="black";
+	}
+	
+close_btn.onmouseleave=function(){
+	close_btn.style.color="grey";
+}
+	
+function close(){
+	modal.style.display = "none";
+}
+
+	
+calculate.onclick=function(){
+	btn.removeAttribute("disabled");
+	calculate.style.display = "none";
+	update.style.display = "inline-block";
+	var finalPrice = '';
+	btn.disabled='false';
+	update.disabled='false';
+	
+	err.innerHTML=`<div style="padding:5px 3px 5px 80px;display:inline-block;font-size:20px;font-weight:400;" >Loading.... </div>`
+	
+	bodyTemplate().then(function(combinedResponse) {
+	
+	var res =JSON.stringify(combinedResponse.response2);
+	var finalVal= JSON.parse(res);
+	data = finalVal.details;
+	finalPrice = finalVal.price;
+
+	if(finalPrice == "0" )
+	{
+	c_val.innerHTML='0.00';
+	err.innerHTML=`<div style="color:red;font-size:20px;display:inline-block;margin-right:2px;margin-left:20px;">&#x26A0;</div><div style="padding:5px 3px 5px 3px;display:inline-block;" >Unable to calculate price. Please check logs for more information. </div>`
+	btn.disabled='false';
+	update.removeAttribute("disabled");
+	}
+	else
+	{
+	c_val.innerHTML=`&#36;`+ finalPrice;
+	err.innerHTML=``;
+	btn.removeAttribute("disabled");
+	update.removeAttribute("disabled");
+
+	}
+	}).catch(function(error) {
+  jslog('Error found in calculate UpfrontExpense_macro :'+ error);
+});
+	}		
+	
+update.onclick=function(){
+	c_val.innerHTML='0.00';
+	var finalPrice ='';
+	btn.disabled='false';
+	update.disabled='false';
+	err.innerHTML=`<div style="padding:5px 3px 5px 80px;display:inline-block;font-size:20px;font-weight:400;" >Loading.... </div>`
+
+	bodyTemplate().then(function(combinedResponse) {
+
+	var res =JSON.stringify(combinedResponse.response2);
+	var finalVal= JSON.parse(res);
+	data = finalVal.details;
+	finalPrice = finalVal.price;
+
+	if(finalPrice ==="0" )
+	{
+	c_val.innerHTML='0.00';
+	err.innerHTML=`<div style="color:red;font-size:20px;display:inline-block;margin-right:2px;margin-left:20px;">&#x26A0;</div><div style="padding:5px 3px 5px 3px;display:inline-block;" >Unable to calculate price. Please check logs for more information.</div>`
+	
+	btn.disabled='false';
+	update.removeAttribute("disabled");
+	}
+	else
+	{
+	c_val.innerHTML=`&#36;`+ finalPrice;
+	err.innerHTML=``;
+	btn.removeAttribute("disabled");
+    update.removeAttribute("disabled");
+	}
+	}).catch(function(error) {
+	jslog('Error found in update UpfrontExpense_macro :'+ error);
+});
+	
+	}
+	
+update.onmouseenter=function(){
+	update.style.background="#00004d";
+	}
+	
+update.onmouseleave=function(){
+	update.style.background="#1560BD";
+	}	
+	
+btn.onclick = function() {
+  modal.style.display = "block";
+	
+ 	const abc=document.getElementById("abc");	
+	abc.innerHTML=``;
+		for (var i = 0; i != data.length; i++) {
+	
+	abc.innerHTML+=`<div style=" font-size:14px;width: 20%;display: inline-block;margin-left:10px;">`+data[i].resourceName+`</div>`
+	
+	if(data[i].Price==="Price_not_applicable")
+	{
+	abc.innerHTML+=`<div  style=" font-size:14px;margin-left:50px;margin-top:15px;margin-bottom:16px;color:#bbbbbb" id="pricing`+data[i].resourceName+``+data[i].Price+`">
+	<i><p id="c_val_I">Price for this resource is not supported. </p> </i></div>`
+	}
+	else{
+		abc.innerHTML+=`<div  style="  font-size:14px;display: inline-block;float: right;" id="pricing`+data[i].resourceName+``+data[i].Price+`">
+	<b>&#36;<p id="c_val_I" style="display:inline-block;">`+data[i].Price+` </p> </b></div><br/>`
+	}
+	;
+
+	
+	if(data[i].sub){
+		for (var j = 0; j != data[i].sub.length; j++) {
+			abc.innerHTML+=`
+				<div style=" font-size:14px;display: inline-block;margin-left:50px;">`+data[i].sub[j].resourceName+`</div>
+ 				<div style="  font-size:14px;display: inline-block;float: right;" id="pricing2`+data[i].sub[j].resourceName+``+data[i].sub[j].Price+`">&#36;`+data[i].sub[j].Price+`</div>
+ 			<br/>`;	
+		}
+	}
+} 
+	
+}
+								 
+close_btn.onclick = function() {
+  close();
+}
+								 
+close_btn1.onclick = function() {
+  close();
+}
+	
+close_btn1.onmouseenter=function(){
+	close_btn1.style.background="#00004d";
+	}
+	
+close_btn1.onmouseleave=function(){
+	close_btn1.style.background="#1560BD";
+	}
+	
+
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+}
+	
+
+	
+</script>
+</body>
+
+
+</html>
+	
+</j:jelly>]]></xml>
+    </sys_ui_macro>
+</record_update>

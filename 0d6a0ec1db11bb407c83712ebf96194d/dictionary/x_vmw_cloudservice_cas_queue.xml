@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="35f019631bde3300e61b21b6bc4bcb34" label="Job Queue" max_length="40" name="x_vmw_cloudservice_cas_queue" type="collection">
+        <element label="Domain" max_length="32" name="sys_domain" type="domain_id"/>
+        <element label="Response" max_length="1000000" name="response" type="string"/>
+        <element label="Topic" max_length="50" name="topic" type="string"/>
+        <element label="Day 2 Record" max_length="32" name="day_2_record" reference="x_vmw_cloudservice_vra_cloud_actions" type="reference"/>
+        <element label="Request" max_length="1000000" name="request" type="string"/>
+        <element attributes="edge_encryption_enabled=true" label="Endpoint" max_length="32" name="organization" read_only="true" reference="x_vmw_cloudservice_register_cas_organization" type="reference"/>
+        <element attributes="edge_encryption_enabled=true" choice="1" label="State" max_length="50" name="state" type="choice">
+            <choice>
+                <element inactive_on_update="false" label="Error" value="Error"/>
+                <element inactive_on_update="false" label="Processing" value="Processing"/>
+                <element inactive_on_update="false" label="Ready" value="Ready"/>
+                <element inactive_on_update="false" label="Completed" value="Completed"/>
+            </choice>
+        </element>
+        <element attributes="edge_encryption_enabled=true" default="0" label="Retry Count" max_length="40" name="retry_count" read_only="true" type="integer"/>
+        <element label="UniqueField" max_length="10000" name="uniquefield" type="string" unique="true"/>
+        <index name="index">
+            <element name="day_2_record"/>
+        </index>
+        <index name="index2">
+            <element name="organization"/>
+        </index>
+        <index name="index3">
+            <element name="sys_domain"/>
+        </index>
+        <index name="index4" unique="true">
+            <element name="uniquefield"/>
+        </index>
+    </element>
+</database>

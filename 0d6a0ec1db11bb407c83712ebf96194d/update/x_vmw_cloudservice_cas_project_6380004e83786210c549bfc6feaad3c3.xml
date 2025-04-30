@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="x_vmw_cloudservice_cas_project">
+    <x_vmw_cloudservice_cas_project action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <administrator_user/>
+        <cost>0 USD</cost>
+        <description/>
+        <entitlement_script/>
+        <header_icon/>
+        <homepage_image/>
+        <homepage_renderer display_value="Category Items">47ebe8aa3742300054b6a3549dbe5dfa</homepage_renderer>
+        <icon/>
+        <image/>
+        <last_cmdb_import_time>1970-01-01T03:00:00.000Z</last_cmdb_import_time>
+        <location/>
+        <member_user/>
+        <mobile_hide_description>false</mobile_hide_description>
+        <mobile_picture/>
+        <mobile_subcategory_render_type>list</mobile_subcategory_render_type>
+        <module/>
+        <order>0</order>
+        <organization display_value="VRA 8.18.1 - 2">aa50c80e83786210c549bfc6feaad357</organization>
+        <organization_id>85ac5874-d1cd-4ef6-8796-ccd26b4f4bd0</organization_id>
+        <parent display_value="VMware Aria Automation Items">30406d721bc2201002804196bc4bcb85</parent>
+        <project_description/>
+        <project_group/>
+        <project_id>b92a5d70-9f0e-44e8-8b6e-d30773f50212</project_id>
+        <project_name>Test-Proj-PA</project_name>
+        <roles/>
+        <sc_catalog display_value="Service Catalog">e0d08b13c3330100c8b837659bba8fb4</sc_catalog>
+        <sys_class_name>x_vmw_cloudservice_cas_project</sys_class_name>
+        <sys_created_by>system</sys_created_by>
+        <sys_created_on>2025-04-10 08:47:21</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_id>6380004e83786210c549bfc6feaad3c3</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Test-Proj-PA</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>x_vmw_cloudservice_cas_project_6380004e83786210c549bfc6feaad3c3</sys_update_name>
+        <sys_updated_by>system</sys_updated_by>
+        <sys_updated_on>2025-04-10 08:47:21</sys_updated_on>
+        <title>Test-Proj-PA</title>
+        <u_catalog_items>0</u_catalog_items>
+        <u_deployments>0</u_deployments>
+        <u_last_catalog_import_time>1970-01-01T03:00:00.000Z</u_last_catalog_import_time>
+    </x_vmw_cloudservice_cas_project>
+    <sys_translated_text action="delete_multiple" query="documentkey=6380004e83786210c549bfc6feaad3c3"/>
+</record_update>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sc_cat_item_category">
+    <sc_cat_item_category action="INSERT_OR_UPDATE">
+        <sc_cat_item display_value="TC_Const_NP_016">e1ae7b7983f46210c549bfc6feaad3f0</sc_cat_item>
+        <sc_category display_value="Amazon- Project">8d00440a83786210c549bfc6feaad3da</sc_category>
+        <sys_class_name>sc_cat_item_category</sys_class_name>
+        <sys_created_by>system</sys_created_by>
+        <sys_created_on>2025-04-10 08:45:04</sys_created_on>
+        <sys_id>1e00cc0a83786210c549bfc6feaad328</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Amazon- Project.TC_Const_NP_016</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sc_cat_item_category_1e00cc0a83786210c549bfc6feaad328</sys_update_name>
+        <sys_updated_by>system</sys_updated_by>
+        <sys_updated_on>2025-04-10 08:45:04</sys_updated_on>
+    </sc_cat_item_category>
+</record_update>

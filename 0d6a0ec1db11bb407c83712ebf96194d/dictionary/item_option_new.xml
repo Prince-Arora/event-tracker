@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="update_synch=true,verify_parent_scope=false" db_object_id="0e40b45874a3121087de1ada281f4590" extends="question" label="Variable" max_length="40" name="item_option_new" type="collection">
+        <element attributes="no_text_index=true" label="Field JSON" max_length="10000000" name="x_vmw_cloudservice_field_json" type="string"/>
+        <element label="Day2 Version" max_length="1000" name="x_vmw_cloudservice_vra_day2_version" type="string"/>
+        <element attributes="no_text_index=true" label="OrginalKeyName" max_length="200" name="x_vmw_cloudservice_vraorginalkeyname" type="string"/>
+        <element attributes="edge_encryption_enabled=true,no_text_index=true" label="CAS Scale Min" max_length="10000" name="x_vmw_cloudservice_cas_scale_min" type="integer"/>
+        <element attributes="no_text_index=true" label="CAS Name" max_length="500" name="x_vmw_cloudservice_cas_name" type="string"/>
+        <element attributes="no_text_index=true" label="Step" max_length="100" name="x_vmw_cloudservice_step" type="string"/>
+        <element attributes="no_text_index=true" label="Minimum" max_length="1000" name="x_vmw_cloudservice_vra_minimum" type="string"/>
+        <element attributes="no_text_index=true" label="CAS Max Date" max_length="200" name="x_vmw_cloudservice_cas_max_date" type="string"/>
+        <element attributes="no_text_index=true" label="Pattern" max_length="1000" name="x_vmw_cloudservice_pattern" type="string"/>
+        <element attributes="no_text_index=true" label="Field Visibility" max_length="100" name="x_vmw_cloudservice_field_visibility" type="string"/>
+        <element label="Property_Container" max_length="1000" name="x_vmw_cloudservice_property_container" type="string"/>
+        <element attributes="no_text_index=true" label="Default Value client script" max_length="10000000" name="x_vmw_cloudservice_vra_default_value_client_script" type="string"/>
+        <element attributes="no_text_index=true" label="CAS Min Date" max_length="200" name="x_vmw_cloudservice_cas_min_date" type="string"/>
+        <element attributes="no_text_index=true" label="Versions" max_length="1000" name="x_vmw_cloudservice_versions" type="string"/>
+        <element attributes="no_text_index=true" label="Field Readonly" max_length="100" name="x_vmw_cloudservice_field_readonly" type="string"/>
+        <element label="Day2 Action" max_length="1000" name="x_vmw_cloudservice_vra_day2_action" type="string"/>
+        <element attributes="edge_encryption_enabled=true,encode_utf8=false,no_text_index=true" label="Action" max_length="32" name="x_vmw_cloudservice_vra_action" reference="x_vmw_cloudservice_vra_cloud_actions" reference_cascade_rule="delete" type="reference"/>
+        <element attributes="no_text_index=true" label="Maximum" max_length="10000" name="x_vmw_cloudservice_vra_maximum" type="string"/>
+        <element attributes="no_text_index=true" label="Datatype" max_length="200" name="x_vmw_cloudservice_datatype" type="string"/>
+        <element attributes="no_text_index=true" label="Value client script" max_length="10000000" name="x_vmw_cloudservice_vra_value_client_script" type="string"/>
+        <element attributes="no_text_index=true" label="Pattern Message" max_length="200" name="x_vmw_cloudservice_pattern_message" type="string"/>
+        <element attributes="edge_encryption_enabled=true,no_text_index=true" label="CAS Scale Max" max_length="10000" name="x_vmw_cloudservice_cas_scale_max" type="integer"/>
+        <index name="index">
+            <element name="x_vmw_cloudservice_vra_action"/>
+        </index>
+    </element>
+</database>

@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope) {
+    /* widget controller */
+    var c = this;
+
+    $scope.pro_name = ["Product Name", "Product Name1"];
+    $scope.pro_data = 100;
+    $scope.price = '0.00';
+    $scope.pr = '';
+    $scope.data.amount = '0.00';
+    $scope.det_data = $scope.data.det_data1;
+    $scope.show = false;
+    $scope.display = false;
+    $scope.display1 = false;
+    $scope.hide_cal = true;
+    $scope.loading = false;
+    $scope.hide_det = true;
+    $scope.hide_up = false;
+
+    $scope.openModal = function() {
+        if ($scope.data.amount == "0" || $scope.data.amount == "0.00") {
+            $scope.show = false;
+        } else {
+            $scope.show = true;
+        }
+    };
+
+    $scope.close = function() {
+        $scope.show = false;
+    };
+
+
+    $scope.calc = function() {
+        $scope.hide_det = false;
+        $scope.hide_cal = false;
+        $scope.hide_up = true;
+        fetchCatalogVariable();
+        $scope.loading = true;
+        $scope.price = $scope.data.amount;
+        $scope.cal = "none";
+        $scope.up = "inline-block";
+    };
+
+    function fetchCatalogVariable() {
+
+
+        $scope.loader = true;
+        c.data.action = 'fetchCatalogVariable';
+        c.data.readOnly = true;
+        c.data.projectId = $scope.page.g_form.getValue('u_project');
+        c.data.version = $scope.page.g_form.getValue('u_version');
+        c.data.catItemSysid = $scope.page.g_form.getUniqueValue();
+
+        c.server.update().then(function(resp) {
+            c.data.action = '';
+            bodyTemplate();
+            $scope.loader = false;
+            c.data.readOnly = false;
+
+        });
+
+    }
+
+    function bodyTemplate() {
+        try {
+            var input = [];
+            var input1 = {};
+            var store_template = [];
+            var store_catalogBody = [];
+            var variableString = '';
+            var projectId;
+            var version = $scope.page.g_form.getValue('u_version');
+            var cat_item = $scope.page.g_form.getValue('cat_item');
+            var parsedTemplate;
+            var catItemSysid = $scope.page.g_form.getUniqueValue();
+            var updatePrice = '';
+            var projectIdTest = $scope.page.g_form.getValue('u_project');
+
+            var parsedRes = JSON.parse(c.data.defaultVar);
+
+            for (var i = 0; i < (parsedRes.variables.length); i++) {
+
+                var name = parsedRes.variables[i].org;
+                if ($scope.page.g_form.getValue[parsedRes.variables[i].name] != '') {
+                    input.push(name);
+                    input.push('');
+                }
+            }
+
+            var jsonObj = {};
+            for (var i = 0; i < input.length; i = i + 2) {
+
+                jsonObj[input[i]] = input[i + 1] + '';
+            }
+            var inputjson = JSON.stringify(jsonObj);
+            var inputjson1 = JSON.parse(inputjson);
+            var template = '{"deploymentName": "", "inputs": {},"projectId": "", "reason": ""}';
+            parsedTemplate = JSON.parse(template);
+            parsedTemplate.inputs = inputjson1;
+
+
+            var hasVersion = false;
+
+            if (!(($scope.page.g_form.getValue('u_version')) == '' || ($scope.page.g_form.getValue('u_version')) == 'null' || ($scope.page.g_form.getValue('u_version')) == 'undefined')) {
+                hasVersion = true;
+                parsedTemplate.version = $scope.page.g_form.getValue('u_version');
+
+            }
+
+
+            if ($scope.page.g_form.getValue('u_deployment_name') == '') {
+
+                if (hasVersion) {
+                    var vers = $scope.page.g_form.getValue('u_version');
+                    var versRegx = new RegExp('[^a-zA-Z0-9]', 'g');
+                    var depName = 'deploymentName__' + vers.replace(versRegx, ' ').trim().replaceAll(' ', '_');
+                    parsedTemplate.deploymentName = $scope.page.g_form.getValue(depName);
+
+                } else {
+                    parsedTemplate.deploymentName = $scope.page.g_form.getValue('deploymentName');
+                }
+            } else {
+                parsedTemplate.deploymentName = $scope.page.g_form.getValue('u_deployment_name');
+            }
+
+            if (hasVersion) {
+                var vers = $scope.page.g_form.getValue('u_version');
+                var versRegx = new RegExp('[^a-zA-Z0-9]', 'g');
+                var desc = 'description__' + vers.replace(versRegx, ' ').trim().replaceAll(' ', '_');
+                if (!($scope.page.g_form.getValue(desc) == '' || $scope.page.g_form.getValue(desc) == 'undefined' || $scope.page.g_form.getValue(desc) == undefined)) {
+                    parsedTemplate.reason = $scope.page.g_form.getValue(desc);
+                }
+
+            } else {
+                if (!($scope.page.g_form.getValue('description') == '' || $scope.page.g_form.getValue('description') == 'undefined' || $scope.page.g_form.getValue('description') == undefined)) {
+                    parsedTemplate.reason = $scope.page.g_form.getValue('description');
+                }
+
+            }
+
+            parsedTemplate.projectId = $scope.page.g_form.getValue('u_project');
+            var i = 0;
+            for (var inputs in parsedTemplate.inputs) {
+                var casName = parsedRes.variables[i].CasName;
+                var casDatatype = parsedRes.variables[i].casData;
+                var nameVersion = parsedRes.variables[i].name;
+                var vall = $scope.page.g_form.getValue(nameVersion);
+                if (casName.startsWith("STR_")) {
+                    if (casDatatype == "Multiselect" || casDatatype == "Duallist") {
+                        var value = $scope.page.g_form.getField(nameVersion).answer ;
+                        parsedTemplate.inputs[inputs] = value;
+
+                    } else if (casDatatype == "ValuePicker") {
+                        var value = JSON.stringify($scope.page.g_form.getField("macro_" + nameVersion).answer);
+                        if (value.startsWith('{') || value.startsWith('"') || value.startsWith('[')) {
+                            parsedTemplate.inputs[inputs] = JSON.parse(value);
+                        } else {
+                            parsedTemplate.inputs[inputs] = value;
+                        }
+                    } else
+                    if (casDatatype == "DataGrid") {
+                        var value = $scope.page.g_form.getValue(nameVersion);
+
+                        if (value.startsWith('[') || value.startsWith('"') || value.startsWith('{')) {
+                            parsedTemplate.inputs[inputs] = JSON.parse(value);
+                        } else {
+                            value = value ? value : [];
+                            parsedTemplate.inputs[inputs] = value;
+                        }
+
+                    } else {
+                        if (!casName.startsWith("upfront_price")) {
+                            parsedTemplate.inputs[inputs] = $scope.page.g_form.getValue(nameVersion);
+                        }
+                    }
+                } else if (casName.startsWith("RADO_")) {
+                    parsedTemplate.inputs[inputs] = $scope.page.g_form.getValue(nameVersion);
+
+                } else if (casName.startsWith("ARR_")) {
+                    var value = $scope.page.g_form.getValue(nameVersion);
+                    value = value.trim();
+                    parsedTemplate.inputs[inputs] = value.split(',');
+
+                } else if (casName.startsWith("Date_") || casName.startsWith('DATE_')) {
+                    var dateField = new Date().getTime();
+                    var selectedDate = new Date(getDateFromFormat($scope.page.g_form.getValue(nameVersion), g_user_date_time_format)).getTime();
+                    var adate = new Date(selectedDate);
+                    var data2 = adate.toISOString();
+                    parsedTemplate.inputs[inputs] = data2;
+
+                } else if (casName.startsWith('PSD_')) {
+                    parsedTemplate.inputs[inputs] = $scope.page.g_form.getValue(nameVersion);
+
+                } else if (casName.startsWith("BOOL_")) {
+                    if ($scope.page.g_form.getValue(nameVersion) == "true") {
+                        parsedTemplate.inputs[inputs] = true;
+
+                    } else if (casName.startsWith("ARR_")) {
+                        parsedTemplate.inputs[inputs] = $scope.page.g_form.getValue(nameVersion).split(",");
+                    }
+                    if ($scope.page.g_form.getValue(nameVersion) == "false") {
+                        parsedTemplate.inputs[inputs] = false;
+                    }
+                } else if (casName.startsWith("INT_")) {
+
+                    var value = parseInt($scope.page.g_form.getValue(nameVersion));
+
+                    if (!isNaN(value)) {
+                        if (casDatatype == "Decimal") {
+                            parsedTemplate.inputs[inputs] = parseFloat($scope.page.g_form.getValue(nameVersion));
+                        } else {
+                            parsedTemplate.inputs[inputs] = parseInt($scope.page.g_form.getValue(nameVersion));
+                        }
+                    } else {
+                        parsedTemplate.inputs[inputs] = 0;
+                    }
+                } else {
+                    parsedTemplate.inputs[inputs] = $scope.page.g_form.getValue(nameVersion);
+                }
+                i++;
+            }
+            $scope.loader = true;
+            c.data.action = 'fetchExternalPrice';
+            c.data.readOnly = true;
+            c.data.template = parsedTemplate;
+
+
+            c.server.update().then(function(resp) {
+                c.data.action = '';
+                if ($scope.data.amount == "0") {
+                    $scope.display = true;
+                    $scope.price = '0.00';
+                    $scope.loading = false;
+					$scope.page.g_form.setValue('upfront_price','Unable to calculate price. Please check logs for more information.');
+                } else {
+                    $scope.display = false;
+                    $scope.price = "$" + $scope.data.amount;
+                    $scope.loading = false;
+					$scope.page.g_form.setValue('upfront_price',$scope.price);
+                }
+				
+                $scope.det_data = $scope.data.det_data1;
+                $scope.loader = false;
+                c.data.readOnly = false;
+
+            });
+        } catch (e) {
+            console.log("Exception caught Inside SP_UpfrontExpense.bodyTemplate " + e + ". Error found");
+        }
+    }
+
+
+
+
+    $scope.update = function() {
+        $scope.data.amount = '0.00';
+        $scope.price = $scope.data.amount;
+        fetchCatalogVariable();
+        $scope.loading = true;
+        if ($scope.data.amount == "0") {
+            $scope.display = true;
+            $scope.price = '0.00';
+        } else {
+            $scope.display = false;
+            $scope.price = "$" + $scope.data.amount;
+        }
+    };
+
+};]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.pro{&#13;
+  font-size:15px;&#13;
+}&#13;
+&#13;
+.spa{&#13;
+  color:red;&#13;
+}&#13;
+&#13;
+input{&#13;
+  width: 30%;&#13;
+  padding: 12px 20px;&#13;
+  margin: 8px;&#13;
+  box-sizing: border-box;&#13;
+  border:none;&#13;
+  border-bottom: 1px solid;&#13;
+}&#13;
+&#13;
+.da{&#13;
+  font-size:18px;&#13;
+  display: inline-block;&#13;
+}&#13;
+&#13;
+.pri{&#13;
+  font-size:18px;&#13;
+  display: inline-block;&#13;
+  margin-left:20px;&#13;
+}&#13;
+&#13;
+.er_icon{&#13;
+  color:red;&#13;
+  font-size:20px;&#13;
+  display:inline-block;&#13;
+  margin-right:2px;&#13;
+  margin-left:20px;&#13;
+}&#13;
+&#13;
+.un_text{&#13;
+  display:inline-block;&#13;
+}&#13;
+&#13;
+.pri_1{&#13;
+  display:inline-block;&#13;
+}&#13;
+&#13;
+.cal{&#13;
+  margin-top:15px;&#13;
+  border-radius:6px;&#13;
+  color: white;&#13;
+  padding: 8px;&#13;
+  margin-left:5px;&#13;
+  text-align: center;&#13;
+  text-decoration: none;&#13;
+  display: inline-block;&#13;
+  font-size: 12px;&#13;
+  background-color:#1F8476;&#13;
+}&#13;
+&#13;
+.cal:hover{&#13;
+  background-color:#2e2e2e;&#13;
+}&#13;
+&#13;
+.up{&#13;
+  margin-top:15px;&#13;
+  border-radius:6px;&#13;
+  color: white;&#13;
+  padding: 8px;&#13;
+  margin-left:5px;&#13;
+  text-align: center;&#13;
+  text-decoration: none;&#13;
+  &#13;
+  font-size: 12px;&#13;
+  background-color:#1F8476;&#13;
+}&#13;
+&#13;
+.up:hover{&#13;
+  background-color:#2e2e2e;&#13;
+}&#13;
+&#13;
+.det{&#13;
+  margin-top:15px;&#13;
+  border-color: black;&#13;
+  border-radius:6px;&#13;
+  color: black;&#13;
+  padding: 8px;&#13;
+  margin-left:5px;&#13;
+  text-align: center;&#13;
+  text-decoration: none;&#13;
+  display: inline-block;&#13;
+  font-size: 12px;&#13;
+  background-color:white;&#13;
+}&#13;
+&#13;
+.det:hover{&#13;
+  background-color:#d6dad8;&#13;
+}&#13;
+  &#13;
+.overlay{&#13;
+  display: inline-block;&#13;
+  position: fixed;&#13;
+  padding-top: 100px;&#13;
+  left: 0;&#13;
+  top: 0;&#13;
+  bottom:0;&#13;
+  right:0;&#13;
+  z-index: 1040;&#13;
+  background-color: rgba(0, 0, 0, 0.5);&#13;
+  overflow:scroll;&#13;
+}&#13;
+&#13;
+  &#13;
+.content{&#13;
+  background-color: #fefefe;&#13;
+  margin: auto; &#13;
+  padding: 20px;&#13;
+  border: 1px solid #888;&#13;
+  min-width:350px;&#13;
+  width: 40%; &#13;
+  overflow:hidden;&#13;
+}&#13;
+  &#13;
+.tim{&#13;
+  color: #aaaaaa;&#13;
+  float: right;&#13;
+  font-size: 20px;&#13;
+  font-weight: bold;&#13;
+}&#13;
+  &#13;
+.gue{&#13;
+  margin-top:20px;&#13;
+  border:blue;&#13;
+  border-radius:5px;&#13;
+  border-width:1px;&#13;
+  border-style:solid;&#13;
+  background-color:#D4FAFA;&#13;
+  font-size:16px;&#13;
+  padding:8px;&#13;
+  width:95%;&#13;
+  color:#87AFC7;&#13;
+}&#13;
+&#13;
+.pric{&#13;
+  padding:5px;&#13;
+}&#13;
+&#13;
+.prici{&#13;
+  padding:5px 0px 5px 5px;&#13;
+}&#13;
+&#13;
+.im{&#13;
+  display: inline-block;&#13;
+}&#13;
+&#13;
+.pric1::-webkit-scrollbar {&#13;
+    width: 0px;  &#13;
+}&#13;
+&#13;
+.pric1{&#13;
+  overflow-y:hidden;&#13;
+  font-size:14px;&#13;
+  width: 65%;&#13;
+  display: inline-block;&#13;
+  margin-left:10px; &#13;
+}&#13;
+  &#13;
+.pric2{&#13;
+  font-size:14px;&#13;
+  display: inline-block;&#13;
+  float:right;&#13;
+} &#13;
+&#13;
+.pric3{&#13;
+  display: inline-block;&#13;
+  &#13;
+}&#13;
+&#13;
+.pric4{&#13;
+  font-size:14px;&#13;
+  margin-left:50px;&#13;
+  margin-top:4px;&#13;
+  margin-bottom:1px;&#13;
+  color:#bbbbbb&#13;
+} &#13;
+&#13;
+.cl::-webkit-scrollbar {&#13;
+    width: 0px;  &#13;
+}&#13;
+&#13;
+.cl{&#13;
+  overflow-y:hidden;&#13;
+  font-size:14px;&#13;
+  width: 60%;&#13;
+  display: inline-block;&#13;
+  margin-left:10px;&#13;
+}&#13;
+&#13;
+.cls{&#13;
+  border-radius:4px;&#13;
+  color: white;&#13;
+  background-color:blue;&#13;
+  padding: 6px;&#13;
+  text-align: center;&#13;
+  text-decoration: none;&#13;
+  display: inline-block;&#13;
+  font-size: 12px;&#13;
+  float: right;&#13;
+  background-color:#1F8476;&#13;
+  margin-top:10px;&#13;
+}&#13;
+&#13;
+.cls:hover{&#13;
+  background-color:#2e2e2e;&#13;
+}&#13;
+  &#13;
+&#13;
+  &#13;
+  &#13;
+  &#13;
+  &#13;
+  &#13;
+  &#13;
+  &#13;
+  &#13;
+  &#13;
+  &#13;
+  </css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description>/************************************************************&#13;
+* Copyright (c)2023 VMware, Inc. All Rights Reserved.&#13;
+* You may not use this product except in compliance with the License.&#13;
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.&#13;
+*************************************************************/&#13;
+&#13;
+&#13;
+&#13;
+</description>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>sp_upfrontexpense</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>SP_UpfrontExpense</name>
+        <option_schema/>
+        <public>false</public>
+        <roles>x_vmw_cloudservice.vra_catalog_admin,x_vmw_cloudservice.vra_end_user</roles>
+        <script><![CDATA[(function() {
+    data.action = '';
+    this.appUtil = new CASAppUtil();
+    this.clientBridge = new CSClientScriptBridge();
+
+    if (input && input.action == 'fetchCatalogVariable') {
+        try {
+            var parameters = JSON.stringify(input);
+            var projectId = input.projectId;
+            var catVersion = input.version;
+            var catSysID = input.catItemSysid;
+            var name = [];
+            var OriginalKeyName = [];
+            var casDatatype = [];
+            var casName = [];
+
+            var variableString = '';
+            var grvars = new GlideRecord(this.appUtil.configuration.table.variable);
+            grvars.addEncodedQuery('cat_item=' + catSysID.toString() + '^x_vmw_cloudservice_versions=' + catVersion.toString() + ',' + '^type!=20^type!=24^type!=19^nameNOT LIKEmacro_^type!=11');
+            grvars.query();
+            var catalogVariables = {};
+            catalogVariables["variables"] = [];
+            while (grvars.next()) {
+                catalogVariables["variables"].push({
+                    "name": grvars.name + '',
+                    "org": grvars.x_vmw_cloudservice_vraorginalkeyname + '',
+                    "casData": grvars.x_vmw_cloudservice_datatype + '',
+                    "CasName": grvars.x_vmw_cloudservice_cas_name + '',
+                });
+            }
+			
+            data.defaultVar = JSON.stringify(catalogVariables);
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of server SP_UpfrontExpense.fetchCatalogVariable: Exception Block:' + e);
+            CASLogger.error("Exception caught Inside Block of server SP_UpfrontExpense.fetchCatalogVariable " + e + ". Error found" + e.stack);
+
+        }
+    }
+
+    if (input && input.action == 'fetchExternalPrice') {
+        try {
+            var parameters = JSON.stringify(input);
+            var projectId = input.projectId;
+            var template = input.template;
+            var catSysID = input.catItemSysid;
+
+            var response = JSON.parse(this.clientBridge.getPriceValues(catSysID, JSON.stringify(template), projectId));
+
+            if (response != false) {
+
+                var finalAns = [];
+				finalAns.push({
+                        "resourceName": 'Total Price',
+                        "Price":  response.dailyTotalPrice != '0' ? parseFloat(response.dailyTotalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : undefined,
+				});
+                var subArray2 = [];
+                for (var i = 0; i < response.resourcePriceDetails.length; i++) {
+
+                    subArray2[response.resourcePriceDetails[i].resourceName] = [];
+                    if (!(response.resourcePriceDetails[i].dailyComputePrice == '0' || response.resourcePriceDetails[i].dailyComputePrice == undefined)) {
+                        subArray2[response.resourcePriceDetails[i].resourceName].push({
+                            "resourceName": "Compute",
+                            "Price": response.resourcePriceDetails[i].dailyComputePrice != '0' ? parseFloat(response.resourcePriceDetails[i].dailyComputePrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : undefined,
+                        });
+                    }
+                    if (!(response.resourcePriceDetails[i].dailyStoragePrice == '0' || response.resourcePriceDetails[i].dailyStoragePrice == undefined)) {
+                        subArray2[response.resourcePriceDetails[i].resourceName].push({
+                            "resourceName": "Storage",
+                            "Price": response.resourcePriceDetails[i].dailyStoragePrice != '0' ? parseFloat(response.resourcePriceDetails[i].dailyStoragePrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : undefined,
+                        });
+                    }
+
+                    if (!(response.resourcePriceDetails[i].dailyAdditionalPrice == '0' || response.resourcePriceDetails[i].dailyAdditionalPrice == undefined)) {
+                        subArray2[response.resourcePriceDetails[i].resourceName].push({
+                            "resourceName": "Additional",
+                            "Price": response.resourcePriceDetails[i].dailyAdditionalPrice != '0' ? parseFloat(response.resourcePriceDetails[i].dailyAdditionalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : undefined,
+                        });
+                    }
+
+                    finalAns.push({
+                        "resourceName": response.resourcePriceDetails[i].resourceName,
+                        "Price": response.resourcePriceDetails[i].dailyTotalPrice != '0' ? response.resourcePriceDetails[i].dailyTotalPrice != undefined ? parseFloat(response.resourcePriceDetails[i].dailyTotalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : 'Price_not_applicable' : '0.00',
+                        "sub": subArray2[response.resourcePriceDetails[i].resourceName].length != '0' ? subArray2[response.resourcePriceDetails[i].resourceName] : undefined,
+                    });
+                }
+                data.det_data1 = finalAns;
+                data.amount = parseFloat(response.dailyTotalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                data.respp = response;
+            } else {
+				
+                data.det_data1 = '0';
+                data.amount = '0';
+                data.respp = response;
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of server SP_UpfrontExpense.fetchExternalPrice: Exception Block:' + e);
+            CASLogger.error("Exception caught Inside Block of server SP_UpfrontExpense.fetchExternalPrice " + e + ". Error found" + e.stack);
+
+        }
+    }
+
+
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2023-04-19 09:25:14</sys_created_on>
+        <sys_id>875df9612f5661100f70fe1df699b6fd</sys_id>
+        <sys_mod_count>163</sys_mod_count>
+        <sys_name>SP_UpfrontExpense</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sp_widget_875df9612f5661100f70fe1df699b6fd</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-05-12 07:44:37</sys_updated_on>
+        <template><![CDATA[<!-- your widget template -->
+  <div>
+    <div class="da">Daily Price Estimate</div>  
+    <div class="pri" ng-model="price">{{price}}</div>
+    <div ng-if="display" class="er_icon">&#x26A0;</div><div ng-if="display" class="un_text">Unable to calculate price. Please check logs for more information. </div><br>
+    <button class="cal" ng-click="calc()" ng-if="hide_cal">CALCULATE</button>
+     <button class="up" ng-click="update()" ng-if="hide_up" >UPDATE</button>
+    <button class="det"  ng-click="openModal()" ng-disabled="hide_det">DETAILS</button>
+  </div>
+       
+  <div class="overlay" ng-if="show">
+    <div class="content">
+       <span class="tim" ng-click="close()">&times;</span>
+        <h3>Daily Price Estimate</h3>
+    
+         <div><p class="gue">&#x1F6C8; Guest OS and one time prices are not included in this estimate.</p></div>
+   
+         <div class="pric" ng-repeat="i in det_data;">
+           <!--<img class="im" width="30" height="30"  ng-src="{{i.image}}" alt="image not found"/>-->
+           <div class="pric1">{{i.resourceName}}</div>
+           <div class="pric2" ng-if="i.Price!='Price_not_applicable'"><b>&#36;<p class="pric3">{{i.Price}}</p></b></div>
+           <div class="pric4" ng-if="i.Price==='Price_not_applicable'"><i><p>Price for this resource is not supported.</p></i></div>
+        
+        
+           <div class="prici" ng-repeat="j in i.sub;">
+             <img class="im" width="35"/>
+             <div class="cl">{{j.resourceName}}</div>
+             <div class="pric2" ng-if="j.Price">&#36;<p class="pric3">{{j.Price}}</p></div>
+           </div>
+         </div>
+      
+        <button class="cls" ng-click="close()">CLOSE</button>
+     </div>
+   </div>
+                                                                 
+                                                            ]]></template>
+    </sp_widget>
+</record_update>

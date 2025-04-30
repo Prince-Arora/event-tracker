@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_choice action="DELETE" field="vrealize_vcfa" table="x_vmw_cloudservice_register_cas_organization" version="3">
+        <sys_choice_set action="DELETE">
+            <element>vrealize_vcfa</element>
+            <name>x_vmw_cloudservice_register_cas_organization</name>
+            <sys_class_name>sys_choice_set</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2025-04-04 13:09:52</sys_created_on>
+            <sys_id>a61342c4c3f462109a58190ed401313e</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>vrealize_vcfa</sys_name>
+            <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+            <sys_update_name>sys_choice_x_vmw_cloudservice_register_cas_organization_vrealize_vcfa</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2025-04-04 13:09:52</sys_updated_on>
+        </sys_choice_set>
+    </sys_choice>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</application>
+        <file_path/>
+        <instance_id>89a6f5c53b070ed816e44a8aa4e45a34</instance_id>
+        <instance_name>dev277158</instance_name>
+        <name>sys_choice_x_vmw_cloudservice_register_cas_organization_vrealize_vcfa</name>
+        <payload><![CDATA[<?xml version="1.0" encoding="UTF-8"?><record_update><sys_choice action="INSERT_OR_UPDATE" field="vrealize_vcfa" table="x_vmw_cloudservice_register_cas_organization" version="3"><sys_choice_set action="INSERT_OR_UPDATE"><element>vrealize_vcfa</element><name>x_vmw_cloudservice_register_cas_organization</name><sys_class_name>sys_choice_set</sys_class_name><sys_created_by>admin</sys_created_by><sys_created_on>2025-04-04 13:09:52</sys_created_on><sys_id>a61342c4c3f462109a58190ed401313e</sys_id><sys_mod_count>0</sys_mod_count><sys_name>vrealize_vcfa</sys_name><sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package><sys_policy/><sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope><sys_update_name>sys_choice_x_vmw_cloudservice_register_cas_organization_vrealize_vcfa</sys_update_name><sys_updated_by>admin</sys_updated_by><sys_updated_on>2025-04-04 13:09:52</sys_updated_on></sys_choice_set></sys_choice></record_update>]]></payload>
+        <payload_hash>-958727196</payload_hash>
+        <record_name>Manage Endpoints.vrealize_vcfa</record_name>
+        <reverted_from/>
+        <source>079ef77983f46210c549bfc6feaad361</source>
+        <source_table>sys_update_set</source_table>
+        <state>current</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2025-04-21 09:57:01</sys_created_on>
+        <sys_id>13f9f42183412210c549bfc6feaad3ae</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>19657c79be90000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2025-04-21 09:57:01</sys_updated_on>
+        <type>Choice list</type>
+        <update_guid>17f9f42135412210bd5d1cd51783b9ad</update_guid>
+        <update_guid_history>17f9f42135412210bd5d1cd51783b9ad:-958727196,17f9f421314122109b70e378ba527faa:785207753,fc3ea2a91d786a1004d3a249e23fa8b1:-1589012259,adfd62e95a786a106cbac620ea4cdd5b:1559830453,f63342446af46210afe4e746b902d776:-938875668,8e33c6c001f4621094370a04feb565cf:450572777,5933ce043ff462107635e80ed0001f2d:1991103818,c8334244f6f46210099599b89a850871:-151882789,2f230e44c9f46210c10ba2bc036c657a:-216891826,e923ce8446f46210158b308a5a22ced7:1725334421,261342c451f462105538854e03f1a740:746784061</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2025-04-21 09:57:01</sys_created_on>
+        <sys_db_object display_value="" name="sys_choice_set">sys_choice_set</sys_db_object>
+        <sys_id>8364dc485ca942caa55e606422ee2b24</sys_id>
+        <sys_metadata>a61342c4c3f462109a58190ed401313e</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>vrealize_vcfa</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_parent display_value="">92624284c3f462109a58190ed40131b2</sys_parent>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_scope_delete display_value="">a294865927fe464d8676a645ea1ad8c9</sys_scope_delete>
+        <sys_update_name>sys_choice_x_vmw_cloudservice_register_cas_organization_vrealize_vcfa</sys_update_name>
+        <sys_update_version display_value="sys_choice_x_vmw_cloudservice_register_cas_organization_vrealize_vcfa">13f9f42183412210c549bfc6feaad3ae</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2025-04-21 09:57:01</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

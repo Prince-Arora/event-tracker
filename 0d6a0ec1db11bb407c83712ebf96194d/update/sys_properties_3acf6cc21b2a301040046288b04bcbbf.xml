@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_properties">
+    <sys_properties action="INSERT_OR_UPDATE">
+        <choices/>
+        <description>This system property will check if the value is true it will  show the loader and if the value is false it will not show the loader.</description>
+        <ignore_cache>true</ignore_cache>
+        <is_private>false</is_private>
+        <name>x_vmw_cloudservice.catalogLoader</name>
+        <read_roles>x_vmw_cloudservice.vra_catalog_admin,admin</read_roles>
+        <suffix>x_vmw_cloudservice.catalogLoader</suffix>
+        <sys_class_name>sys_properties</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2021-09-13 14:46:28</sys_created_on>
+        <sys_id>3acf6cc21b2a301040046288b04bcbbf</sys_id>
+        <sys_mod_count>130</sys_mod_count>
+        <sys_name>x_vmw_cloudservice.catalogLoader</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_properties_3acf6cc21b2a301040046288b04bcbbf</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2021-09-23 12:57:28</sys_updated_on>
+        <type>boolean</type>
+        <value>true</value>
+        <write_roles>x_vmw_cloudservice.vra_catalog_admin,admin</write_roles>
+    </sys_properties>
+    <sys_translated_text action="delete_multiple" query="documentkey=3acf6cc21b2a301040046288b04bcbbf"/>
+</record_update>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.AvoidParallelScheduleJobs</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description/>
+        <name>AvoidParallelScheduleJobs</name>
+        <script><![CDATA[/*************************************************************
+* Copyright (c) 2020-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var AvoidParallelScheduleJobs = Class.create();
+AvoidParallelScheduleJobs.prototype = {
+	initialize: function() {
+	},
+	
+	checkQueueEmpty : function(type,organization)
+	{
+		try
+		{
+			CASLogger.debug('Inside  AvoidParallelScheduleJobs.checkQueueEmpty: Type '+type + ' organization: ' + organization);
+			var grqueue = new GlideRecordSecure('x_vmw_cloudservice_cas_queue');	
+			var query='';
+			if(type == 'Project Import')
+			{  
+
+				query = 'topicINStartImportProject,StartedImportProject,ParseProject,ReconcileImportProject^stateNOT INCompleted,Error^organization='+organization;
+
+
+
+			}
+			else if(type == 'Catalog Import')
+			{
+
+
+				query = 'topicINStartImportCatalog,ScheduledImportCatalog,PreImportCatalog,ImportCatalog,ReconcileImportCatalog^stateNOT INCompleted,Error^organization='+organization;
+
+
+			}
+			else if(type == 'CMDB Import')
+			{
+
+
+				query = 'topicINStartImportCMDB,IndivImportCMDB,createCMDB,preImportResource,parseResource,createResource,reconcileCMDB,startImportActionForDeployment,parseActionForDeployment,parseActionSchemaForDeployment,startImportActionForResource,parseActionForResource,parseActionSchemaForResource,makeActionSchemaCalls^stateNOT INCompleted,Error^organization='+organization;
+
+			}
+			else if( type == 'Check All Topics'){
+				
+				
+				query= 'topicINactionForEndpoint,StartImportProject,StartedImportProject,ParseProject,ReconcileImportProject,StartImportCatalog,ScheduledImportCatalog,PreImportCatalog,ImportCatalog,ReconcileImportCatalog,StartImportCMDB,IndivImportCMDB,createCMDB,preImportResource,parseResource,createResource,reconcileCMDB,startImportActionForDeployment,parseActionForDeployment,parseActionSchemaForDeployment,startImportActionForResource,parseActionForResource,parseActionSchemaForResource,makeActionSchemaCalls^stateNOT INCompleted,Error^organization='+organization;
+				
+				
+			}
+
+			// CASLogger.debug("Inside AvoidParallelScheduleJobs.checkQueueEmpty:---query: " +  query);
+			grqueue.addEncodedQuery(query);
+			grqueue.query();
+			if(grqueue.next())
+			{	
+				
+				CASLogger.debug('Inside if block of grqueue.next(): AvoidParallelScheduleJobs.checkQueueEmpty');
+				return false;
+			}
+			else
+			{
+				CASLogger.debug('Inside else block of grqueue.next(): AvoidParallelScheduleJobs.checkQueueEmpty');
+				return true;
+			}
+
+		}
+		catch(e)
+		{
+			CASLogger.debug('Inside Catch Block of AvoidParallelScheduleJobs.checkQueueEmpty: Exception Block:  type: ' + type);
+			CASLogger.error('Exception caught inside  checkQueueEmpty'+ e + ". Error found" + e.stack);
+		}
+	},
+
+
+	type: 'AvoidParallelScheduleJobs'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2020-01-28 06:26:16</sys_created_on>
+        <sys_id>378a776e2fe60010b0f8d2172799b614</sys_id>
+        <sys_mod_count>37</sys_mod_count>
+        <sys_name>AvoidParallelScheduleJobs</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_378a776e2fe60010b0f8d2172799b614</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-05-04 12:59:11</sys_updated_on>
+    </sys_script_include>
+</record_update>

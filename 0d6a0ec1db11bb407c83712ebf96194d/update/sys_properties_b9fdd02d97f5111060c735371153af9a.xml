@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_properties">
+    <sys_properties action="INSERT_OR_UPDATE">
+        <choices/>
+        <description>This is the property which defines the number of days of gap to present the consent request form on manage endpoint screen again if the consent was not given last time.</description>
+        <ignore_cache>true</ignore_cache>
+        <is_private>false</is_private>
+        <name>x_vmw_cloudservice.consent_request_trigger_gap</name>
+        <read_roles>x_vmw_cloudservice.vra_catalog_admin</read_roles>
+        <suffix>consent_request_trigger_gap</suffix>
+        <sys_class_name>sys_properties</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2022-09-07 09:52:24</sys_created_on>
+        <sys_id>b9fdd02d97f5111060c735371153af9a</sys_id>
+        <sys_mod_count>6</sys_mod_count>
+        <sys_name>x_vmw_cloudservice.consent_request_trigger_gap</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_properties_b9fdd02d97f5111060c735371153af9a</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2022-11-11 07:44:59</sys_updated_on>
+        <type>integer</type>
+        <value>30</value>
+        <write_roles>x_vmw_cloudservice.vra_catalog_admin</write_roles>
+    </sys_properties>
+    <sys_translated_text action="delete_multiple" query="documentkey=b9fdd02d97f5111060c735371153af9a"/>
+</record_update>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="global_search_config_handler=RequestItemSearchConfig,hasWorkflow=true" audit="true" create_roles="catalog_admin" db_object_id="c7d0709c74a3121087de1ada281f4500" extends="task" label="Requested Item" max_length="40" name="sc_req_item" text_index="true" type="collection">
+        <element label="Deployment Id" max_length="50" name="x_vmw_cloudservice_deployment_id" type="string"/>
+        <element label="Deployment ID" max_length="50" name="x_vmw_cloudservice_vra_deployment_id" type="string"/>
+    </element>
+</database>

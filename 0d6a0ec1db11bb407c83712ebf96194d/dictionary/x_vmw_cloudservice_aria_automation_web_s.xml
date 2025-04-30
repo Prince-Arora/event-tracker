@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="ead40cab9763211059b4b857f053af6b" extends="sys_import_set_row" label="Aria Automation Web Service" max_length="40" name="x_vmw_cloudservice_aria_automation_web_s" type="collection">
+        <element label="Schema" max_length="200000" name="schema" type="string"/>
+        <element label="Domain" max_length="32" name="sys_domain" type="domain_id"/>
+        <index name="index">
+            <element name="sys_domain"/>
+        </index>
+    </element>
+</database>

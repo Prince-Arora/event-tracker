@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_page">
+    <sp_page action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <css>.body{&#13;
+  background-color: $pageBgColor;&#13;
+  padding:0;&#13;
+}&#13;
+.custom-container-column{&#13;
+  padding:0;&#13;
+}&#13;
+.content-left-pane{&#13;
+padding-left:10px !important;&#13;
+  padding-right:5px !important;&#13;
+}&#13;
+&#13;
+&#13;
+.content-right-pane{&#13;
+padding-left:10px !important;&#13;
+  padding-right:10px !important;&#13;
+}&#13;
+.select2-drop { &#13;
+  color: $fontColor;&#13;
+  background-color: $bgColor;&#13;
+  border-color:  $borderColor;&#13;
+}&#13;
+.select2-choice {&#13;
+  box-shadow: none;&#13;
+}&#13;
+.select2-highlighted {&#13;
+  background-color: $hoverBgColor;&#13;
+  color: $fontHoverColor;&#13;
+}&#13;
+input, textarea {&#13;
+  background-color: $cardBgColor;&#13;
+  color: $cardFontColor;&#13;
+  border-color: $borderColor;&#13;
+  &amp;:focus {&#13;
+    border-color: $borderColor;&#13;
+    box-shadow: 0px 0px 5px $hoverShadowPrimaryColor, 0px 0px 3px $hoverShadowSecondaryColor;&#13;
+  }&#13;
+}&#13;
+&#13;
+section.page{&#13;
+  position: fixed;&#13;
+  overflow: auto;&#13;
+  top: 96px;&#13;
+	//padding-bottom:96px;&#13;
+}</css>
+        <draft>false</draft>
+        <dynamic_title_structure>Cart</dynamic_title_structure>
+        <human_readable_url_structure/>
+        <id>vra_cartpage</id>
+        <internal>false</internal>
+        <omit_watcher>false</omit_watcher>
+        <public>false</public>
+        <roles>x_vmw_cloudservice.vra_catalog_admin,x_vmw_cloudservice.vra_end_user</roles>
+        <seo_script/>
+        <short_description/>
+        <sys_class_name>sp_page</sys_class_name>
+        <sys_created_by>Navdeep</sys_created_by>
+        <sys_created_on>2019-08-02 07:23:10</sys_created_on>
+        <sys_id>89755245db0bb300291d61ca0b9619d0</sys_id>
+        <sys_mod_count>20</sys_mod_count>
+        <sys_name>vra_cartpage</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sp_page_89755245db0bb300291d61ca0b9619d0</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 05:10:25</sys_updated_on>
+        <title>CartPage</title>
+        <use_seo_script>false</use_seo_script>
+    </sp_page>
+    <sys_translated_text action="delete_multiple" query="documentkey=89755245db0bb300291d61ca0b9619d0"/>
+</record_update>

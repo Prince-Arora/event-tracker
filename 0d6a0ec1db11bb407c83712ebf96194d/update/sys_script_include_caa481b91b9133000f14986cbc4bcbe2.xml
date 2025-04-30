@@ -1,0 +1,492 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.EndpointRegister</api_name>
+        <caller_access/>
+        <client_callable>true</client_callable>
+        <description/>
+        <name>EndpointRegister</name>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2019-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var EndpointRegister = Class.create();
+
+EndpointRegister.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+
+    initialize: function() {
+
+        this.appUtil = new CASAppUtil();
+        this.daoUtil = new CASDaoUtil();
+    },
+
+	
+    generateApiToken: function(current) {
+
+        try {
+            CASLogger.debug('Inside  EndpointRegister.generateApiToken: For generating api token.');
+            var refreshKeyValue = current.refresh_key.getDecryptedValue().toString();
+            var midserver = '';
+            var username = '';
+            var password = '';
+            var endPoint = '';
+            var body = '';
+
+            //var casHost=this.appUtil.configuration.api.hostname;
+
+            //cas
+            if (current.select_automation_service == 'vRealiseAutomationCloud') {
+                endPoint = current.cas_url + this.appUtil.configuration.api.token;
+                //gs.error('endPoint------>'+endPoint);
+                body = '{"refreshToken" : "' + refreshKeyValue + '"}';
+                CASLogger.debug('Inside EndpointRegister.generateApiToken: cloud endpoint:' + endPoint + ' body: ' + body);
+            }
+
+            if (current.select_automation_service == 'vrealizeAutomationService') {
+
+                endPoint = current.hostname + this.appUtil.configuration.api.vraToken;
+                midserver = current.mid_server.name;
+                username = current.username;
+                password = current.password.getDecryptedValue().toString();
+                body = '{"username" : "' + username + '", "password":"' + password + '" }';
+                CASLogger.debug('Inside EndpointRegister.generateApiToken: endpoint:' + endPoint + ' username: ' + username);
+            }
+
+
+            var response = this.appUtil.makeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", '');
+            CASLogger.debug('Inside EndpointRegister.generateApiToken:---response: ' + response);
+
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(EndpointRegister.generateApiToken):" + endPoint);
+                    } else {
+                        CASLogger.error('REST call error found inside EndpointRegister.generateApiToken: ' + response.getErrorMessage());
+                    }
+                }
+
+                return false;
+
+            } else {
+                var responsebody = response.getBody();
+				var res = this.daoUtil.checkNull(responsebody);
+				if(res == false || res == 'false'){
+					CASLogger.error('Inside null/empty if block of EndpointRegister.generateApiToken:responsebody: ' + responsebody);
+					return;
+				}else{
+                CASLogger.debug('Inside Else Block of select_automation_service: EndpointRegister.generateApiToken: responsebody:  ' + responsebody);
+                if (current.select_automation_service == 'vrealizeAutomationService') {
+                    var accessToken = '';
+                    var json = this.appUtil.parse(responsebody);
+                    var refresh_token = json.refresh_token;
+                    endPoint = current.hostname + '/iaas/api/login';
+                    body = '{"refreshToken": ' + refresh_token + '	}';
+                    response = this.appUtil.makeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", '');
+                    CASLogger.debug('Inside else if block of response.haveError(): EndpointRegister.generateApiToken:---response: ' + response);
+                    if (response.haveError()) {
+                        propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                        for (var s = 0; s < propertyStatus.length; s++) {
+                            if (propertyStatus[s] == response.getStatusCode()) {
+                                CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(EndpointRegister.generateApiToken):" + endPoint);
+                            } else {
+                                CASLogger.error('REST call error found inside EndpointRegister.generateApiToken: ' + response.getErrorMessage());
+                            }
+                        }
+
+                    } else {
+                        responsebody = response.getBody();
+						var res = this.daoUtil.checkNull(responsebody);
+						if(res == false || res == 'false'){
+							CASLogger.error('Inside null/empty if block of EndpointRegister.generateApiToken:responsebody: ' + responsebody);
+							return;
+						}else{
+                        var parsed = JSON.parse(responsebody);
+                        CASLogger.debug('Inside Else Block inside  esle if block of response.haveError(): EndpointRegister.generateApiToken: responsebody:  ' + responsebody);
+                        accessToken = parsed.token;
+                    }
+                    return accessToken;
+					}
+                } else {
+                    var jsonCas = this.appUtil.parse(responsebody);
+                    var casToken = jsonCas.token;
+
+                    return casToken;
+                }
+
+
+            }
+			}
+        } catch (e) {
+
+            CASLogger.debug('Inside Catch Block of EndpointRegister.generateApiToken: Exception Block: ' + ' responsebody: ' + responsebody);
+            CASLogger.error("Exception caught inside EndpointRegister.generateApiToken " + e + ". Error found" + e.stack);
+            return false;
+        }
+    },
+
+
+    refreshKeyExpiryDate: function(current) {
+        try {
+            CASLogger.debug('Inside EndpointRegister.refreshKeyExpiryDate: Refresh Key Expiry Date.');
+            var midserver = '';
+            var endPoint = '';
+           
+            var refreshToken = current.refresh_key.getDecryptedValue();
+            var body = '{"tokenValue" : "' + refreshToken + '"}';
+            CASLogger.debug("InsideEndpointRegister.refreshKeyExpiryDate:---body: " + body);
+
+            if (current.select_automation_service == 'vRealiseAutomationCloud') {
+                endPoint = current.cas_url + this.appUtil.configuration.api.expiryDate;
+                CASLogger.debug('Inside EndpointRegister.refreshKeyExpiryDate: cloud endpoint: ' + endPoint);
+            }
+
+            if (current.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = current.hostname + this.appUtil.configuration.api.expiryDate;
+                midserver = current.mid_server.name;
+                CASLogger.debug('Inside EndpointRegister.refreshKeyExpiryDate: endpoint: ' + endPoint + ' midserver: ' + midserver);
+            }
+
+            var response = this.appUtil.makeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", '');
+            CASLogger.debug('Inside EndpointRegister.refreshKeyExpiryDate:---response: ' + response);
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(EndpointRegister.refreshKeyExpiryDate):" + endPoint);
+                    } else {
+                        CASLogger.error('REST call error found inside EndpointRegister.refreshKeyExpiryDate: ' + response.getErrorMessage());
+                    }
+                }
+
+                return false;
+
+            } else {
+                var responseBody = response.getBody();
+				var res = this.daoUtil.checkNull(responseBody);
+					if(res == false || res == 'false'){
+						CASLogger.error('Inside null/empty if block of EndpointRegister.refreshKeyExpiryDate:responseBody: ' + responseBody);
+						return false;
+					}else{
+                var Obj = this.appUtil.parse(responseBody);
+                CASLogger.debug('Inside Else Block of response.haveError(): EndpointRegister.refreshKeyExpiryDate: responseBody: ' + responseBody);
+                return Obj.expiresAt;
+            }
+			}
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of EndpointRegister.refreshKeyExpiryDate: Exception Block: ' + ' responseBody: ' + responseBody);
+            CASLogger.error("Exception caught inside EndpointRegister.refreshKeyExpiryDate " + e + ". Error found" + e.stack);
+        }
+
+    },
+
+    getProjectDetails: function(current) {
+        try {
+            CASLogger.debug('Inside  EndpointRegister.getProjectDetails: Project Details');
+            var pageSize = gs.getProperty(this.appUtil.configuration.properties.apiPageSize);
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+            //var casHost=this.appUtil.configuration.api.hostname;
+
+            if (current.organization.select_automation_service == 'vRealiseAutomationCloud') {
+
+                token = current.organization.api_token.getDecryptedValue().toString();
+                endPoint = current.organization.cas_url + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=0&$orderby=name";
+                CASLogger.debug('Inside EndpointRegister.getProjectDetails: cloud endpoint: ' + endPoint);
+
+            }
+            if (current.organization.select_automation_service == 'vrealizeAutomationService') {
+
+                endPoint = current.organization.hostname + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=0&$orderby=name";
+                midserver = current.organization.mid_server.name;
+                token = current.organization.api_token.getDecryptedValue().toString();
+                CASLogger.debug('Inside EndpointRegister.getProjectDetails: endpoint: ' + endPoint + ' midserver: ' + midserver);
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside EndpointRegister.getProjectDetails:---response: ' + response.getBody());
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error('Import::: Project: ' + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(EndpointRegister.getProjectDetails):");
+                    } else {
+                        CASLogger.error('Import::: Project: ' + '\n endPoint: ' + endPoint + '\n REST call error found inside EndpointRegister.getProjectDetails. \nError found: ' + response.getErrorMessage());
+                    }
+                }
+
+                return false;
+
+            } else {
+                var responsebody = response.getBody();
+				var res = this.daoUtil.checkNull(responsebody);
+				if(res == false || res == 'false'){
+					CASLogger.error('Inside null/empty if block of EndpointRegister.getProjectDetails:responsebody: ' + responsebody);
+					return false;
+				}else{
+				CASLogger.debug('Inside Else Block of response.haveError(): EndpointRegister.getProjectDetails: responsebody: ' + responsebody);
+                var json_array = responsebody;
+                this.daoUtil.insert("StartedImportProject", json_array, "", current.organization);
+                var obj = this.appUtil.parse(responsebody);
+                var pageLength = obj.totalPages;
+                CASLogger.debug('Inside Else Block of response.haveError(): EndpointRegister.getProjectDetails: pageLength: ' + pageLength);
+                for (var i = 1; i < pageLength; i++) {
+
+                    //for cas.
+                    if (current.organization.select_automation_service == 'vRealiseAutomationCloud') {
+                        token = current.organization.api_token.getDecryptedValue().toString();
+                        endPoint = current.organization.cas_url + this.appUtil.configuration.api.projects + "/?$orderby=name&size=" + pageSize + "&page=" + i;
+                        CASLogger.debug('Inside for loop of pageLength: EndpointRegister.getProjectDetails: cloud endpoint: ' + endPoint);
+
+                    }
+                    if (current.organization.select_automation_service == 'vrealizeAutomationService') {
+
+                        endPoint = current.organization.hostname + this.appUtil.configuration.api.projects + "/?$orderby=name&size=" + pageSize + "&page=" + i;
+                        midserver = current.organization.mid_server.name;
+                        token = current.organization.api_token.getDecryptedValue().toString();
+                        CASLogger.debug('Inside for loop of pageLength: EndpointRegister.getProjectDetails: endpoint: ' + endPoint + ' midserver: ' + midserver);
+                    }
+                    var response1 = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+                    CASLogger.debug('Inside for loop of pageLength: EndpointRegister.getProjectDetails:---response1: ' + response1);
+                    if (response1.haveError()) {
+                        propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                        for (var s = 0; s < propertyStatus.length; s++) {
+                            if (propertyStatus[s] == response1.getStatusCode()) {
+                                CASLogger.error('Import::: Project: ' + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response1.getStatusCode()) + ":(EndpointRegister.getProjectDetails):" + endPoint);
+                            } else {
+                                CASLogger.error('Import::: Project: ' + '\n endPoint: ' + endPoint + '\n REST call error found inside EndpointRegister.getProjectDetails: \n Error found: ' + response1.getErrorMessage());
+                            }
+                        }
+                        return false;
+
+                    } else {
+                        var responsebody1 = response1.getBody();
+                        var json_array1 = responsebody1;
+                        CASLogger.debug('Inside Else Block of response1.haveError(): EndpointRegister.getProjectDetails: responsebody1: ' + responsebody1);
+                        this.daoUtil.insert("StartedImportProject", json_array1, "", current.organization);
+                    }
+                }
+                return true;
+
+            }
+			}
+
+        } catch (e) {
+            CASLogger.error("Import::: Project: " + "\n endPoint: " + endPoint + "\n Exception caught inside EndpointRegister.getProjectDetails" + e + ".\n Error found: " + e.stack);
+            CASLogger.debug('Inside Catch Block of EndpointRegister.getProjectDetails: Exception Block: ' + ' responsebody: ' + responsebody + ' responsebody1: ' + responsebody1);
+            return "exceptionError";
+        }
+    },
+
+
+    parseProject: function(current) {
+        try {
+            var obj = this.appUtil.parse(current.response);
+            var ProjectDetails = obj.content.length;
+            CASLogger.debug('Inside  EndpointRegister.parseProject: For parse of Project: Current.response: ' + current.response + ' ProjectDetails: ' + ProjectDetails);
+            for (var i = 0; i < ProjectDetails; i++) {
+                var name = obj.content[i]["name"];
+                var description = obj.content[i]["description"];
+                var projectId = obj.content[i]["id"];
+                var organizationId = obj.content[i]["orgId"];
+                var array = [];
+                array.push("name");
+                array.push(name);
+                array.push("description");
+                array.push(description);
+                array.push("id");
+                array.push(projectId);
+                array.push("orgId");
+                array.push(organizationId);
+                var arr_length = obj.content[i].administrators.length;
+                var array1 = [];
+                for (var j = 0; j < arr_length; j++) {
+                    var email = obj.content[i].administrators[j]["email"];
+                    array1.push(email);
+                    //CASLogger.debug('Inside for loop of arr_length: EndpointRegister.parseProject. ');
+                }
+                array.push("administrators");
+                array.push(array1);
+                array1 = [];
+                var arr_lengths = obj.content[i].members.length;
+                for (var k = 0; k < arr_lengths; k++) {
+                    var emails = obj.content[i].members[k]["email"];
+                    array1.push(emails);
+                    //CASLogger.debug('Inside for loop of arr_lengths: EndpointRegister.parseProject. ');
+                }
+                array.push("members");
+                array.push(array1);
+                array1 = [];
+                if (obj.content[i].cost != null) {
+                    var cost = obj.content[i].cost["cost"];
+                    var costUnit = obj.content[i].cost["costUnit"];
+                    array.push("cost");
+                    array.push(cost);
+                    array.push("costUnit");
+                    array.push(costUnit);
+                    CASLogger.debug('Inside if block of EndpointRegister.parseProject. ');
+                } else {
+                    array.push("cost");
+                    array.push(0);
+                    array.push("costUnit");
+                    array.push("USD");
+                    CASLogger.debug('Inside else block of EndpointRegister.parseProject. ');
+                }
+                CASLogger.debug('Inside EndpointRegister.parseProject: array: ' + array);
+                var JsonArray = this.appUtil.arrToJSON(array);
+                this.daoUtil.insert("ParseProject", JsonArray, "", current.organization);
+
+            }
+            return true;
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of EndpointRegister.parseProject: Exception Block: Current.response:' + current.response + ' projectId: ' + projectId + ' organizationId: ' + organizationId);
+            CASLogger.error("Import::: Project: " + "\n ProjectId: " + projectId + "\n Exception caught inside EndpointRegister.parseProject " + e + ".\n Error found" + e.stack);
+            return "exceptionError";
+        }
+    },
+
+    reconcileProject: function(current) {
+        try {
+            CASLogger.debug('Inside  EndpointRegister.reconcileProject: reconcileProject. ');
+            var pageSize = gs.getProperty(this.appUtil.configuration.properties.apiPageSize);
+            var midserver = '';
+            var projectIdList = '';
+            var endPoint = '';
+            var token = '';
+            var projectId = '';
+            //var casHost=this.appUtil.configuration.api.hostname; //old method
+
+            if (current.organization.select_automation_service == 'vRealiseAutomationCloud') {
+                token = current.organization.api_token.getDecryptedValue().toString();
+                endPoint = current.organization.cas_url + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=0&$orderby=name";
+                CASLogger.debug('Inside EndpointRegister.reconcileProject: cloud endpoint: ' + endPoint);
+            }
+            if (current.organization.select_automation_service == 'vrealizeAutomationService') {
+
+                endPoint = current.organization.hostname + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=0&$orderby=name";
+                midserver = current.organization.mid_server.name;
+                token = current.organization.api_token.getDecryptedValue().toString();
+                CASLogger.debug('Inside EndpointRegister.reconcileProject: endpoint: ' + endPoint);
+
+            }
+
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside EndpointRegister.reconcileProject:---response: ' + response.getBody());
+
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error('Import::: Project: ' + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(EndpointRegister.reconcileProject):");
+                    } else {
+                        CASLogger.error('Import::: Project: ' + '\n endPoint: ' + endPoint + ' Error found: ' + 'REST call error found inside EndpointRegister.reconcileProject:' + response.getErrorMessage() + '\n statuscode: ' + response.getStatusCode());
+                    }
+                }
+
+                return false;
+
+            } else
+
+            {
+                var responsebody = response.getBody();
+				var res = this.daoUtil.checkNull(responsebody);
+				if(res == false || res == 'false'){
+					CASLogger.error('Inside null/empty if block of EndpointRegister.reconcileProject:responsebody: ' + responsebody);
+					return false;
+				}else{
+				var obj = this.appUtil.parse(responsebody);
+                CASLogger.debug('Inside Else Block of response.haveError(): EndpointRegister.reconcileProject: responsebody: ' + responsebody);
+                projectId = obj.content.length;
+                var pageLength = obj.totalPages;
+                CASLogger.debug('Inside Else Block of response.haveError(): EndpointRegister.reconcileProject: pageLength: ' + pageLength + ' projectId: ' + projectId);
+                for (var i = 0; i < projectId; i++) {
+                    projectIdList += obj.content[i].id + ";";
+                    //CASLogger.debug(' Inside for loop of projectId: EndpointRegister.reconcileProject: projectIdList: ' + projectIdList);
+
+                }
+                CASLogger.debug(' Inside else block of response.haveError(): EndpointRegister.reconcileProject: projectIdList: ' + projectIdList);
+                for (var k = 1; k < pageLength; k++) {
+                    if (current.organization.select_automation_service == 'vRealiseAutomationCloud') {
+                        token = current.organization.api_token.getDecryptedValue().toString();
+                        endPoint = current.organization.cas_url + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=" + k + "&$orderby=name";
+                        CASLogger.debug('Inside for loop of pageLength: EndpointRegister.reconcileProject: cloud endpoint: ' + endPoint);
+                    }
+                    if (current.organization.select_automation_service == 'vrealizeAutomationService') {
+
+                        endPoint = current.organization.hostname + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=" + k + "&$orderby=name";
+                        midserver = current.organization.mid_server.name;
+                        token = current.organization.api_token.getDecryptedValue().toString();
+                        CASLogger.debug('Inside for loop of pageLength: EndpointRegister.reconcileProject: endpoint: ' + endPoint + ' midserver: ' + midserver);
+                    }
+                    var response1 = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+                    CASLogger.debug('Inside EndpointRegister.reconcileProject:---response1: ' + response1.getBody());
+
+                    if (response1.haveError()) {
+                        propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                        for (var s = 0; s < propertyStatus.length; s++) {
+                            if (propertyStatus[s] == response1.getStatusCode()) {
+                                CASLogger.error('Import::: Project: ' + '\n projectIdList: ' + projectIdList + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response1.getStatusCode()) + ":(EndpointRegister.reconcileProject):");
+                            } else {
+                                CASLogger.error('Import::: Project: ' + '\n projectIdList: ' + projectIdList + '\n endPoint: ' + endPoint + '\n Error found: ' + ' REST call error found inside EndpointRegister.reconcileProject:' + response1.getErrorMessage() + '\n statuscode: ' + response.getStatusCode());
+                            }
+                        }
+                        return false;
+
+                    } else {
+                        var responsebody1 = response1.getBody();
+						var res = this.daoUtil.checkNull(responsebody1);
+						if(res == false || res == 'false'){
+							CASLogger.error('Inside null/empty if block of EndpointRegister.reconcileProject:responsebody1: ' + responsebody1);
+							return false;
+						}else{
+                        var obj1 = this.appUtil.parse(responsebody1);
+                        projectId = obj1.content.length;
+                        CASLogger.debug('Inside Else Block of response1.haveError(): EndpointRegister.reconcileProject: responsebody1: ' + responsebody1 + ' projectId: ' + projectId);
+                        for (var z = 0; z < projectId; z++) {
+                            projectIdList += obj1.content[z].id + ";";
+                        }
+
+                    }
+					}
+                }
+
+            }
+            if (projectIdList) {
+
+                CASLogger.debug('Inside If Block of projectIdList: EndpointRegister.reconcileProject: projectIdList: ' + projectIdList);
+                var checkProjectId = this.daoUtil.reconcileProjectCheck(projectIdList, current);
+            }
+
+            return true;
+			}
+        } catch (e) {
+            CASLogger.error("Import::: Project: " + "\n projectIdList: " + projectIdList + "\n endPoint: " + endPoint + "\n Exception caught inside EndpointRegister.reconcileProject " + e + ".\n Error found" + e.stack);
+            CASLogger.debug('Inside Catch Block of EndpointRegister.reconcileProject: Exception Block: projectId: ' + projectId + ' responsebody1: ' + responsebody1 + ' responsebody: ' + responsebody + ' projectIdList: ' + projectIdList);
+            return "exceptionError";
+        }
+
+
+    },
+
+
+
+
+    type: 'EndpointRegister'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-05-09 09:35:55</sys_created_on>
+        <sys_id>caa481b91b9133000f14986cbc4bcbe2</sys_id>
+        <sys_mod_count>333</sys_mod_count>
+        <sys_name>EndpointRegister</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_caa481b91b9133000f14986cbc4bcbe2</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-12-17 10:57:06</sys_updated_on>
+    </sys_script_include>
+</record_update>

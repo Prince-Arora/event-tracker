@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="sys_script">
+    <sys_script action="INSERT_OR_UPDATE">
+        <abort_action>false</abort_action>
+        <access>package_private</access>
+        <action_delete>false</action_delete>
+        <action_insert>true</action_insert>
+        <action_query>false</action_query>
+        <action_update>true</action_update>
+        <active>true</active>
+        <add_message>false</add_message>
+        <advanced>true</advanced>
+        <change_fields>false</change_fields>
+        <client_callable>false</client_callable>
+        <collection>x_vmw_cloudservice_vra_cloud_actions</collection>
+        <condition/>
+        <description/>
+        <execute_function>false</execute_function>
+        <filter_condition/>
+        <is_rest>false</is_rest>
+        <message/>
+        <name>checkForCatalog</name>
+        <order>100</order>
+        <priority>100</priority>
+        <rest_method/>
+        <rest_method_text/>
+        <rest_service/>
+        <rest_service_text/>
+        <rest_variables/>
+        <role_conditions/>
+        <script><![CDATA[/*************************************************************************************************************
+ * Copyright (c) 2020-2023 VMware, Inc. All Rights Reserved.
+ * You may not use this product except in compliance with the License.
+ * This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+ **************************************************************************************************************/
+(function executeRule(current, previous /*null when async*/ ) {
+    try {
+        if (!current.action_schema.changes() && current.valid == 'true') {
+            var ds_plugin1 = GlidePluginManager.isActive("com.glide.domain");
+            var ds_plugin2 = GlidePluginManager.isActive("com.glideapp.servicecatalog.domain_separation");
+            var resource = '';
+            var category = '';
+            var query = '';
+            var action = current.display_name;
+            var endpoint = current.endpoint;
+            var description = '';
+            var appUtil = new CASAppUtil();
+            if (current.deployment) {
+                if ((ds_plugin1 == true || ds_plugin1 == 'true') && (ds_plugin2 == true || ds_plugin2 == 'true')) {
+                    query = 'name=' + action + '^category=' + gs.getProperty(appUtil.configuration.properties.deploymentCategory) + '^organisation_name=' + endpoint;
+                } else {
+                    query = 'name=' + action + '^category=' + gs.getProperty(appUtil.configuration.properties.deploymentCategory);
+                }
+                category = gs.getProperty(appUtil.configuration.properties.deploymentCategory);
+                resource = 'Deployment';
+                description = "Deployment Action-" + action;
+
+            }
+            if (current.machine) {
+                if ((ds_plugin1 == true || ds_plugin1 == 'true') && (ds_plugin2 == true || ds_plugin2 == 'true')) {
+                    query = 'name=' + action + '^category=' + gs.getProperty(appUtil.configuration.properties.machineCategory) + '^organisation_name=' + endpoint;
+                } else {
+                    query = 'name=' + action + '^category=' + gs.getProperty(appUtil.configuration.properties.machineCategory);
+                }
+                category = gs.getProperty(appUtil.configuration.properties.machineCategory);
+                resource = 'Machine';
+                description = "Resource Action-" + action;
+            }
+            if (query != '') {
+                var catalogCount = new GlideAggregate(appUtil.configuration.table.catalogItem);
+                catalogCount.addEncodedQuery(query);
+                catalogCount.addAggregate('COUNT');
+                catalogCount.query();
+                catalogCount.next();
+                var count = catalogCount.getAggregate('COUNT');
+
+                var addTopic = new CASDaoUtil();
+                var catalogId = '';
+
+                var catGR = new GlideRecord(appUtil.configuration.table.catalogItem);
+                catGR.addEncodedQuery(query);
+                catGR.query();
+
+                if (count > 1) {
+                    while (catGR.next()) {
+
+                        var catItem = new sn_sc.CatItem(catGR.sys_id);
+
+                        var deleteVR = new GlideRecord(appUtil.configuration.table.variable);
+                        deleteVR.addQuery('cat_item', catGR.sys_id);
+                        deleteVR.query();
+                        while (deleteVR.next()) {
+                            var item = new sn_sc.CatalogItemVariable(deleteVR.sys_id);
+                            item.deleteRecord(true);
+                        }
+
+                        var deleteCS = new GlideRecord(appUtil.configuration.table.clientScript);
+                        deleteCS.addQuery('cat_item', catGR.sys_id);
+                        deleteCS.query();
+                        while (deleteCS.next()) {
+                            var catalogClientScript = new sn_sc.CatalogClientScript(deleteCS.sys_id);
+                            catalogClientScript.deleteRecord(true);
+                        }
+
+                        catItem.deleteRecord(true);
+                    }
+                }
+                if (!catGR.next()) {
+                    catGR.initialize();
+                    catGR.name = action;
+                    catGR.short_description = description;
+                    catGR.no_quantity = 'true';
+                    catGR.sys_scope = gs.getProperty(appUtil.configuration.properties.applicationSysID);
+                    catGR.no_quantity_v2 = 'true';
+                    catGR.no_wishlist_v2 = 'true';
+                    catGR.no_delivery_time_v2 = 'true';
+                    catGR.workflow = gs.getProperty(appUtil.configuration.properties.catalogRequestWorkflow);
+                    catGR.category = category;
+                    catGR.day2_actions = current.action_id + ',';
+                    if ((ds_plugin1 == true || ds_plugin1 == 'true') && (ds_plugin2 == true || ds_plugin2 == 'true')) {
+                        catGR.organisation_name = endpoint;
+                        catGR.uniquefiled = description + endpoint;
+                    } else {
+                        catGR.uniquefiled = description;
+                    }
+                    catalogId = catGR.insert();
+                    new x_vmw_cloudservice.ImportStart().createdefaultActionVariables(catalogId, current.deplyment ? current.deployment : current.machine, resource);
+                    //new x_vmw_cloudservice.CASDaoUtil().createDefaultClientScript(catalogId,resource);
+
+
+                } else {
+                    catGR.short_description = description;
+                    catalogId = catGR.sys_id;
+                    var catActionId = current.action_id + '';
+                    var allActions = catGR.day2_actions + '';
+                    if (allActions.indexOf(catActionId) == -1) {
+                        catGR.day2_actions = catGR.day2_actions + catActionId + ',';
+                    }
+
+                    catGR.update();
+                }
+				if(action== 'delete' || action =='Delete' || action == 'Power On' || action == 'Power Off' || action == 'Reboot' || action == 'Reset' || action == 'Shutdown' || action == 'Suspend' || action == 'Restart' || action == 'PowerOn' || action == 'PowerOff'){
+						new x_vmw_cloudservice.CASDaoUtil().insertcatalogclientscript(catalogId,resource,action);
+					}
+                
+                var topic = new x_vmw_cloudservice.CASDaoUtil().insert("makeActionSchemaCalls", current.sys_id, catalogId, current.endpoint);
+
+
+            }
+        }
+    } catch (e) {
+        CASLogger.error("Exception caught inside BR:checkForCatalog " + e);
+    }
+
+})(current, previous);]]></script>
+        <sys_class_name>sys_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2020-08-31 11:37:01</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>3e8bd554db871010ca597b386896194a</sys_id>
+        <sys_mod_count>89</sys_mod_count>
+        <sys_name>checkForCatalog</sys_name>
+        <sys_overrides/>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_3e8bd554db871010ca597b386896194a</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-08-18 12:55:07</sys_updated_on>
+        <template/>
+        <when>async</when>
+    </sys_script>
+    <sys_translated_text action="delete_multiple" query="documentkey=3e8bd554db871010ca597b386896194a"/>
+</record_update>

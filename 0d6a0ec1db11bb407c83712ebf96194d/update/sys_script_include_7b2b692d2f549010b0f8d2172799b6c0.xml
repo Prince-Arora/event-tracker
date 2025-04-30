@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.BaseUrlCheck</api_name>
+        <caller_access/>
+        <client_callable>true</client_callable>
+        <description/>
+        <name>BaseUrlCheck</name>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2020-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var BaseUrlCheck = Class.create();
+BaseUrlCheck.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+
+
+
+  fetchBaseUrl: function() {
+        try {
+            CASLogger.debug('Inside  BaseUrlCheck.fetchBaseUrl: Fetch Base Url.');
+            this.appUtil = new CASAppUtil();
+
+            return gs.getProperty(this.appUtil.configuration.properties.BaseUrlCheck);
+
+        } catch (e) {
+			CASLogger.debug('Inside Catch Block of BaseUrlCheck.fetchBaseUrl: Exception Block.');
+            CASLogger.error("Exception caught inside BaseUrlCheck.fetchBaseUrl" + e + ". Error found" + e.stack);
+        }
+    },
+
+
+    HostNameRegionCheck: function(current)
+
+    {
+        try {
+            CASLogger.debug('Inside  BaseUrlCheck.HostNameRegionCheck: Base Url Check.');
+            this.appUtil = new CASAppUtil();
+            var pageSize = gs.getProperty(this.appUtil.configuration.properties.apiPageSize);
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+            //var casHost=this.appUtil.configuration.api.hostname;
+
+            if (current.select_automation_service == 'vRealiseAutomationCloud') {
+
+                token = current.api_token.getDecryptedValue().toString();
+                endPoint = current.cas_url + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=0";
+				CASLogger.debug("Inside BaseUrlCheck.HostNameRegionCheck: cloud endpoint:" + endPoint);
+
+            }
+            if (current.select_automation_service == 'vrealizeAutomationService') {
+
+                endPoint = current.hostname + this.appUtil.configuration.api.projects + "/?size=" + pageSize + "&page=0";
+                midserver = current.mid_server.name;
+                token = current.api_token.getDecryptedValue().toString();
+				CASLogger.debug("Inside BaseUrlCheck.HostNameRegionCheck: endpoint:" + endPoint + ' midserver: ' + midserver );
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+			CASLogger.debug('Inside BaseUrlCheck.HostNameRegionCheck:---response: ' + response);
+
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(BaseUrlCheck.HostNameRegionCheck):"+endPoint);
+                    } else {
+                        CASLogger.error('REST call error found inside BaseUrlCheck.HostNameRegionCheck:' + response.getErrorMessage());
+                    }
+                }
+
+                return false;
+
+            }
+			var body = response.getBody();
+			var bodyParse = JSON.parse(body);
+			var orgId = '';
+			if(!(bodyParse.content == '' || bodyParse.content == undefined || bodyParse.content == "undefined")){
+				orgId = bodyParse.content[0].orgId;
+			}
+			return orgId;
+        } catch (e) {
+			CASLogger.debug('Inside Catch Block of BaseUrlCheck.HostNameRegionCheck: Exception Block: midserver: '+ midserver+ ' endPoint: '+ endPoint+ ' response: '+ response);
+            CASLogger.error("Exception caught inside BaseUrlCheck.HostNameRegionCheck" + e + ". Error found" + e.stack);
+        }
+    },
+    type: 'BaseUrlCheck'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2020-04-20 17:05:06</sys_created_on>
+        <sys_id>7b2b692d2f549010b0f8d2172799b6c0</sys_id>
+        <sys_mod_count>47</sys_mod_count>
+        <sys_name>BaseUrlCheck</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_7b2b692d2f549010b0f8d2172799b6c0</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-06-02 08:13:18</sys_updated_on>
+    </sys_script_include>
+</record_update>

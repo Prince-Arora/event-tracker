@@ -1,0 +1,694 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>public</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.CASAppUtil</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description>Common Function Used in VMware Aria Automation Plugin</description>
+        <name>CASAppUtil</name>
+        <script><![CDATA[/*****************************************************************
+ * Copyright (c) 2019-2023 VMware, Inc. All Rights Reserved.
+ * You may not use this product except in compliance with the License.
+ * This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+ ***************************************************************/
+var CASAppUtil = Class.create();
+CASAppUtil.prototype = {
+    initialize: function() {
+        this.configuration = {
+
+            // change in token from this "/iaas/login" to "/iaas/api/login"
+            "api": {
+                "token": "/iaas/api/login",
+                "vraToken": "/csp/gateway/am/api/login?access_token",
+                "projects": "/project-service/api/projects",
+                "expiryDate": "/csp/gateway/am/api/auth/api-tokens/details",
+                "catalogItem": "/catalog/api/items",
+                "deployment": "/deployment/api/deployments/",
+                "machine": "/deployment/api/deployments/",
+                "resource": "/deployment/api/resources/",
+                "actionrequest": "/deployment/api/requests/",
+                "customform": "/form-service/api/forms/renderer/model?sourceType=",
+                "externalSource": "/form-service/api/forms/renderer/external-value?projectId=",
+                "externalValues": "/form-service/api/forms/renderer/external-values?projectId=",
+                "externalValuePicker": "/form-service/api/forms/renderer/external-resources",
+                "validateOauthToken": "/csp/gateway/am/api/auth/introspect",
+                "directBinding": "/form-service/api/custom/resource-actions/",
+
+            },
+            "ATF": {
+                "projects": "/api/x_vmw_cloudservice/atf/projects",
+                "catalogItem": "/api/x_vmw_cloudservice/atf/"
+
+            },
+
+            //Added some table and properties "sys_properties" , "Thread_active".
+
+            "table": {
+                "register_cas": "x_vmw_cloudservice_register_cas_organization",
+                "project": "x_vmw_cloudservice_cas_project",
+                "queue": "x_vmw_cloudservice_cas_queue",
+                "requests": "sc_req_item",
+                "approvals": "sysapproval_approver",
+                "theme": "sp_theme",
+                "catalogItem": "x_vmw_cloudservice_cas_catalog_items",
+                "variable": "item_option_new",
+                "variableSet": "io_set_item",
+                "variable_Set": "item_option_new_set",
+                "choice": "question_choice",
+                "entitlement": "x_vmw_cloudservice_cas_catalog_entitlement",
+                "actionRequests": "x_vmw_cloudservice_vra_action_request",
+                "deploymentImport": "x_vmw_cloudservice_vra_deployments_import_set",
+                "machineImport": "x_vmw_cloudservice_vra_machines_import_set",
+                "catalogCategory": "sc_cat_item_category",
+                "clientScript": "catalog_script_client",
+                "user_criteria_mtom": "sc_cat_item_user_criteria_mtom",
+                "user_criteria_no_mtom": "sc_cat_item_user_criteria_no_mtom",
+                "uiSection": "sys_ui_section",
+                "uiElement": "sys_ui_element",
+                "deployments": "x_vmw_cloudservice_deployments",
+                "machines": "x_vmw_cloudservice_machines",
+                "relationship": "cmdb_rel_ci",
+                "action": "x_vmw_cloudservice_vra_cloud_actions",
+                "shared_resources": "x_vmw_cloudservice_shared_resources",
+                "users_table": "sys_user",
+                "groups_table": "sys_user_group",
+                "actionEntitlement": "x_vmw_cloudservice_day_2_action_request_entitlement",
+                "incident": "incident",
+                "midserver": "ecc_agent",
+                "workflowActivity": "wf_activity",
+                "group_users_member": "sys_user_grmember",
+                "regex": "question_regex",
+                "module": "sys_app_module",
+                "oauthToken": "x_vmw_cloudservice_oauth_tokens",
+                "cmdb_ci": "cmdb_ci",
+                "db_object": "sys_db_object",
+                "choice_list": "sys_choice",
+                "system_script": "sys_script_include",
+                "job_schedules": "sysauto_script",
+                "sys_properties": "sys_properties",
+                "sys_attachment": "sys_attachment",
+				"cluster_member":"ecc_agent_cluster_member_m2m"
+            },
+
+            "properties": {
+
+                "vraEndUser": "x_vmw_cloudservice.vra_end_user",
+                "vraCatalogAdmin": "x_vmw_cloudservice.vra_catalog_admin",
+                "headerJSON": "x_vmw_cloudservice.CASheaderJSON",
+                "defaultHeaderJSON": "x_vmw_cloudservice.CASdefaultHeaderJSON",
+                "supportURL": "x_vmw_cloudservice.CAS_supportURL",
+                "catalogSysID": "x_vmw_cloudservice.cas_catalog_sysid",
+                "applicationSysID": 'x_vmw_cloudservice.cas_application_sysid',
+                "variableSetSysID": "x_vmw_cloudservice.variable_set",
+                "duration": "x_vmw_cloudservice.sn.casqueue.deletion.duration",
+                "relationship": 'x_vmw_cloudservice.CIRelationshipSys_Id',
+                "catalogRequestWorkflow": "x_vmw_cloudservice.catalogRequest",
+                "actions": 'x_vmw_cloudservice.Day2Actions',
+                "requestStatusTimer": 'x_vmw_cloudservice.CSWorkflowTimerToCheckRequestStatus',
+                "version": 'x_vmw_cloudservice.itsm_application_version',
+                "assignment_group": 'x_vmw_cloudservice.AriaAutomation-ApprovalGroup',
+                "portalPrefix": 'x_vmw_cloudservice.portalPrefix',
+                "resourceExlusion": 'x_vmw_cloudservice.resourceExclusionList',
+                "supportGroup": "x_vmw_cloudservice.vra.supportGroup",
+                "request_approval": "x_vmw_cloudservice.enable_email_notification_for_request_approval",
+                "request_rejection": "x_vmw_cloudservice.enable_email_notification_for_request_rejection",
+                "request_more_details": "x_vmw_cloudservice.enable_email_notification_for_more_details",
+                "Request_completion": "x_vmw_cloudservice.Request_Completion",
+                "day2_action_completion": "x_vmw_cloudservice.notification_for_day2_actions",
+                "incident_for_failure_catalogitems": "x_vmw_cloudservice.enable_incident_for_failure_catalogitems",
+                "incident_for_failure_day2actions": "x_vmw_cloudservice.enable_incident_for_failure_day2action",
+                "group_notifications": "x_vmw_cloudservice.sendApprovalRequest",
+                "support_group_new": "x_vmw_cloudservice.support_group_for_ITSM_8.x",
+                "shared_resource_notifications": "x_vmw_cloudservice.shared resource email notification",
+                "EndpointEmailNotification": 'x_vmw_cloudservice.EndpointEmailNotification',
+                "entitlement": "x_vmw_cloudservice.notification_for_entitlement",
+                "timerToReTriggerRequest": "x_vmw_cloudservice.TimetoRe-TriggerCatalogRequest",
+                "Request_Retrigger": "x_vmw_cloudservice.Request re-trigger turnstile activity sys_id",
+                "Request_Iteration": "x_vmw_cloudservice.Request Iteration turnstile activity sys_id",
+                "ApiVersionDate": 'x_vmw_cloudservice.SetApiVersionDate',
+                "sendGroupApprovalRequest": 'x_vmw_cloudservice.sendGroupApprovalRequest',
+                "BaseUrlCheck": 'x_vmw_cloudservice.cloud_API_endpoint_URL',
+                "CustomFormFilter": 'x_vmw_cloudservice.Custom form filter Enable/Disable',
+                "XaaSWorkflowFilter": 'x_vmw_cloudservice.XaaS Vro Workflow Filter Enable/Disable',
+                "parentCategorySysID": "x_vmw_cloudservice.parent_category",
+                "machineCategory": "x_vmw_cloudservice.machineCategory",
+                "deploymentCategory": "x_vmw_cloudservice.deploymentCategory",
+                "cas_datagrid_widget_sysid": "x_vmw_cloudservice.cas_datagrid_widget_sysid",
+                "cas_datagrid_ui_macro_sysid": "x_vmw_cloudservice.cas_datagrid_ui_macro_sysid",
+                "cas_duallist_widget_sysid": "x_vmw_cloudservice.cas_duallist_widget_sysid",
+                "cas_duallist_ui_macro_sysid": "x_vmw_cloudservice.cas_duallist_ui_macro_sysid",
+                "cas_multiselect_widget_sysid": "x_vmw_cloudservice.cas_multiselect_widget_sysid",
+                "cas_multiselect_ui_macro_sysid": "x_vmw_cloudservice.cas_multiselect_ui_macro_sysid",
+                "cas_valuepicker_widget_sysid": "x_vmw_cloudservice.cas_valuepicker_widget_sysid",
+                "cas_valuepicker_ui_macro_sysid": "x_vmw_cloudservice.cas_valuepicker_ui_macro_sysid",
+                "deploymentVariableSet": "x_vmw_cloudservice.deploymentVariableSet",
+                "resourceVariableSet": "x_vmw_cloudservice.resourceVariableSet",
+                "ServicePoratlUISysIds": "x_vmw_cloudservice.ServicePoratlUISysIds",
+                "configurationCheck": "x_vmw_cloudservice.check_configuration",
+                "runPostUpgradeScript": "x_vmw_cloudservice.runPostUpgradeScript",
+                "ServicePortalPrefix": "x_vmw_cloudservice.servicePortalPrefix",
+                "DeploymentWindowSize": "x_vmw_cloudservice.deploymentWindowSize",
+                "DeploymentLimit": "x_vmw_cloudservice.DeploymentLimit",
+                "enableOAuth": "x_vmw_cloudservice.enable_OAuth",
+                "usercriteriaModuleSysid": "x_vmw_cloudservice.usercriteriaModuleSysid",
+                "ATF": "x_vmw_cloudservice.Switch to ATF",
+                "apiPageSize": "x_vmw_cloudservice.apiPageSize",
+                "deploymentActionDeploymentSysId": "x_vmw_cloudservice.deploymentActionDeployment",
+                "resourceActionResourceSysId": "x_vmw_cloudservice.resourceActionResource",
+                "threadCounter": "x_vmw_cloudservice.ThreadCounter",
+                "threadLimit": "x_vmw_cloudservice.ThreadUsed",
+                "statusCode": "x_vmw_cloudservice.ITSM_http_status_code",
+                "ApiTimeout": "x_vmw_cloudservice.API Timeout",
+                "Thread_active": "x_vmw_cloudservice.ThreadActivated",
+                "incident_for_failed_topics": "x_vmw_cloudservice.enable_incident_for_failed_topics",
+                "projectGroupName": "x_vmw_cloudservice.ProjectGroupNameStartsWithvRA",
+                "Fetch_Deployment_Day2": "x_vmw_cloudservice.fetch_deployments_day2_actions",
+                "Fetch_Resource_Day2": "x_vmw_cloudservice.fetch_resources_day2_actions",
+                "check_domain_deactivated": "x_vmw_cloudservice.check_domain_deactivated",
+                "deployments_last_sync": "x_vmw_cloudservice.deployments_last_sync_time",
+                "delta_trigger_time": "x_vmw_cloudservice.delta_sync_trigger_time",
+                "telemetryCollectorID": "x_vmw_cloudservice.telemetry_collector_id",
+                "customer_concent_value": "x_vmw_cloudservice.customer_consent_value",
+                "consent_re_trigger_gap": "x_vmw_cloudservice.consent_request_trigger_gap",
+                "last_trigger": "x_vmw_cloudservice.telemetry_last_trigger",
+                "consent_provider": "x_vmw_cloudservice.telemetry_consent_provided_user",
+                "telemetry_table": "x_vmw_cloudservice.telemetry_table",
+                "telemetry_Collector_Url": "x_vmw_cloudservice.telemetry_Collector_Url",
+                "rateLimit": "x_vmw_cloudservice.rateLimitMaximised",
+                "cluster_routing": "x_vmw_cloudservice.cluster_routing_enabled",
+				"workflowSync": "x_vmw_cloudservice.dataSync_Workflow",
+				"sn_onprem" : "x_vmw_cloudservice.snOnPrem_to_ariaOnPrem",
+				"featureFlagForDay2DesignChange": "x_vmw_cloudservice.featureFlagForDay2DesignChange"
+            },
+
+            "page": {
+                "home": "vra_homepage",
+                "organizations": "vra_organizationspage",
+                "catalogForm": "vra_catalog_form",
+                "cart": "vra_cartpage",
+                "activitiesList": "vra_activitiespagelist",
+                "activitiesCard": "vra_activitiespage",
+                "activitiesForm": "vra_activitiesform",
+                "deploymentList": "vra_deploymentslistpage",
+                "deploymentCard": "vra_deploymentspage",
+                "deploymentDetail": "vra_deploymentdetailspage",
+                "sharedResources": "vra_sharedResources",
+                "sharedResourcesList": "vra_sharedResourceslist",
+                "sharedResourceForm": 'vra_sharedResourceForm',
+                "support": "vra_supportpage",
+                "spCatalogItemPage": "sc_cat_item",
+                "casSPDeploymentListPage": "cas_sp_deploymentlistpage",
+                "casSPDeploymentDetailsPage": "cas_sp_deploymentdetailspage"
+            }
+        };
+    },
+
+    clusterStatus: function(midserver) {
+        try {
+			CASLogger.debug('Inside  CASAppUtil.clusterStatus: MidserverName' + midserver);
+            var isAnyMidServerUp = false;
+            var clusterMIDServerGR = new GlideRecord(this.configuration.table.cluster_member);
+            clusterMIDServerGR.addQuery('agent.name', midserver);
+            clusterMIDServerGR.query();
+
+            while (clusterMIDServerGR.next()) {
+                var clusterSysID = clusterMIDServerGR.cluster;
+                var clusterMIDServerStatusGR = new GlideRecord(this.configuration.table.cluster_member);
+                clusterMIDServerStatusGR.addQuery('cluster', clusterSysID);
+                clusterMIDServerStatusGR.query();
+
+                while (clusterMIDServerStatusGR.next()) {
+                    var midServerStatus = clusterMIDServerStatusGR.agent.status.getDisplayValue();
+                    if (midServerStatus == 'Up') {
+                        isAnyMidServerUp = true;
+                    }
+                }
+            }
+            if (isAnyMidServerUp) {
+                CASLogger.debug("Inside if block of CASAppUtil.clusterStatus : The MidServer utilizes the cluster routing mechanism.");
+
+            } else {
+                CASLogger.error('Inside else block of CASAppUtil.clusterStatus : All Mid Server are down. Correct the Mid Server Status and perform the operation again.');
+                return "clusters are down";
+            }
+        } catch (e) {
+            CASLogger.error('Exception caught inside CASAppUtil.clusterStatus function: ' + e + ". Error found" + e.stack);
+			CASLogger.debug('Inside catch block of CASAppUtil.clusterStatus : Midserver Name' + midserver);
+
+        }
+    },
+
+
+
+
+    makeApiCall: function(endpoint, method, body, midserver, accept, contentType, authorization, retryTimes, catalogsysid, headerVal) {
+
+        try {
+            CASLogger.debug('Inside CASAppUtil.makeApiCall: Make an api call' + ' endpoint: ' + endpoint);
+            var timeout = gs.getProperty(this.configuration.properties.ApiTimeout);
+            var Date = '';
+			var isClusterRouting = (gs.getProperty(this.configuration.properties.cluster_routing)).toLowerCase();
+
+            if (!(midserver == '' || midserver == 'undefined' || midserver == undefined)) {
+                var midGR = new GlideRecord(this.configuration.table.midserver);
+                midGR.addQuery('name', midserver);
+                midGR.query();
+                if (midGR.next()) {
+                    if (isClusterRouting == true || isClusterRouting == 'true') {
+                        var clusterStatusResult = this.clusterStatus(midserver);
+							if (clusterStatusResult == 'clusters are down'){
+								return "clusters are down";
+							}
+                    } else if (midGR.status != 'Up') {
+                        CASLogger.error('CASAppUtil.makeApiCall: Mid Server ' + midserver + ' is down. Correct the Mid Server Status and perform the operation again.');
+                        return "midserver is down";
+                    }
+
+                }
+            }
+            var API = endpoint;
+            Date = gs.getProperty(this.configuration.properties.ApiVersionDate);
+            var ApiDate = "apiVersion=";
+            var check = API.indexOf('?');
+            var ModifiedAPI = '';
+            if (check > -1) {
+                CASLogger.debug('Inside if block of CASAppUtil.makeApiCall: check: ' + check);
+                ModifiedAPI = API + "&" + ApiDate + Date;
+
+            } else {
+                CASLogger.debug('Inside else block of CASAppUtil.makeApiCall: check: ' + check);
+                ModifiedAPI = API + "?" + ApiDate + Date;
+            }
+            CASLogger.debug('Inside CASAppUtil.makeApiCall: ModifiedAPI: ' + ModifiedAPI);
+            var request = new sn_ws.RESTMessageV2();
+            request.setEndpoint(ModifiedAPI);
+            request.setHttpMethod(method);
+            if (method === 'post') {
+                request.setRequestBody(body);
+            }
+            if (midserver) {
+                request.setMIDServer(midserver);
+            }
+            if (authorization) {
+                request.setRequestHeader("Authorization", authorization);
+            }
+            request.setRequestHeader("Accept", accept);
+            request.setRequestHeader("Content-Type", contentType);
+            request.setRequestHeader("x-source", "ITSM");
+            request.setEccParameter('skip_sensor', true);
+            request.setHttpTimeout(timeout);
+
+            var table = this.configuration.table.catalogItem;
+            if (catalogsysid) {
+                request.saveResponseBodyAsAttachment(table, catalogsysid, headerVal);
+            }
+
+
+            // var response = request.executeAsync();
+            var response = request.execute();
+            var httpstatus = response.getStatusCode();
+            if (gs.nil(retryTimes)) {
+                retryTimes = gs.getProperty('x_vmw_cloudservice.topic_retry_count');
+            }
+
+            //Halt the queue and resume calls after 5 mins if status 429 is received.
+
+            if (response.getStatusCode() == 429) {
+                CASLogger.error('Inside CASAppUtil.makeApiCall : Maximum number of request calls has hit the server with the endpoint ' + endpoint + '. The further requests will be resumed after some time ');
+
+                if (gs.getProperty(this.configuration.properties.Thread_active) == 'true') {
+                    gs.setProperty(this.configuration.properties.Thread_active, 'false');
+                    var grOrg = new GlideRecord(this.configuration.table.register_cas);
+                    grOrg.query();
+                    while (grOrg.next()) {
+                        if (grOrg.timelimit != '') {
+                            grOrg.timelimit = '';
+                            grOrg.update();
+                        }
+                    }
+                    gs.setProperty(this.configuration.properties.rateLimit, 'true');
+
+                }
+                return response;
+
+            }
+
+            if (response.getStatusCode() == 401 && response.getErrorMessage().toString().indexOf('Invalid username/password combo') > -1) {
+                var token = '';
+                if (retryTimes > 0) {
+                    var base_url = endpoint.split('.com/')[0].toString() + '.com';
+
+                    var grReg = new GlideRecord(this.configuration.table.register_cas);
+                    grReg.addEncodedQuery('active=true^cas_url=' + base_url);
+                    grReg.query();
+                    if (grReg.hasNext()) {
+                        if (grReg.next()) {
+
+                            token = new EndpointRegister().generateApiToken(grReg);
+                            grReg.api_token = token;
+                            grReg.update();
+                        }
+                    } else {
+                        grReg = new GlideRecord(this.configuration.table.register_cas);
+                        grReg.addEncodedQuery('active=true^hostname=' + base_url);
+                        grReg.query();
+                        if (grReg.next()) {
+
+                            token = new EndpointRegister().generateApiToken(grReg);
+                            grReg.api_token = token;
+                            grReg.update();
+                        }
+                    }
+                    if (token != 'false') {
+                        authorization = 'Bearer ' + token;
+                        response = this.makeApiCall(endpoint, method, body, midserver, accept, contentType, authorization, --retryTimes);
+                        if (!(response.getStatusCode() == 401 && response.getErrorMessage().toString().indexOf('Invalid username/password combo') > -1)) {
+                            return response;
+                        }
+                    }
+                }
+                return response;
+            }
+            if (response.getStatusCode() != 0 && response.getStatusCode() != 408 && response.getStatusCode() != 429 && response.getStatusCode() != 500 && response.getStatusCode() != 404 && response.getStatusCode() != 400) {
+                if (response.haveError()) {
+                    if (retryTimes > 0) {
+                        response = this.makeApiCall(endpoint, method, body, midserver, accept, contentType, authorization, --retryTimes);
+                        if (!response.haveError()) {
+                            return response;
+                        }
+                    }
+                    return response;
+                }
+            }
+            CASLogger.debug('Inside CASAppUtil.makeApiCall: response: ' + response + ' httpstatus: ' + httpstatus);
+            return response;
+
+
+        } catch (e) {
+
+            var error = e.toString().split(":")[0];
+            if (error == 'com.glide.ecc.ECCResponseTimeoutException') {
+                CASLogger.error("CASAppUtil.makeApiCall: API " + API + " request was not executed sucessfully.Re-run the request after verifying the Mid Server." + e);
+                return error;
+            } else {
+                CASLogger.debug('Inside catch block of CASAppUtil.makeApiCall:' + ' body: ' + body + ' API: ' + API + ' ModifiedAPI: ' + ModifiedAPI + ' method: ' + method + ' response: ' + response + ' httpstatus: ' + httpstatus);
+                CASLogger.error("Exception caught inside CASAppUtil.makeApiCall: " + e + ". Error found" + e.stack);
+            }
+
+
+        }
+    },
+
+
+    makeApiCallATF: function(endpoint, method, body, username, password) {
+        try {
+            CASLogger.debug('Inside CASAppUtil.makeApiCallATF: body: ' + body + ' method: ' + method + ' endpoint: ' + endpoint);
+            var request = new sn_ws.RESTMessageV2();
+            request.setEndpoint(endpoint);
+            request.setHttpMethod(method);
+            if (method == 'post') {
+                request.setRequestBody(body);
+            }
+
+            request.setBasicAuth(username, password);
+            request.setRequestHeader("Accept", "application/json");
+            request.setRequestHeader('Content-Type', 'application/json');
+            request.setHttpTimeout(30000000);
+
+            var response = request.execute();
+            CASLogger.debug('Inside CASAppUtil.makeApiCallATF: response: ' + response);
+            var httpstatus = response.getStatusCode();
+            CASLogger.debug('Inside CASAppUtil.makeApiCallATF: httpstatus: ' + httpstatus);
+
+            return response;
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.makeApiCallATF: Exception Block: body: ' + body + ' method: ' + method + ' endpoint: ' + endpoint + ' response: ' + response + ' httpstatus: ' + httpstatus);
+            CASLogger.error("Exception caught inside CASAppUtil.makeApiCallATF " + e + ". Error found" + e.stack);
+        }
+    },
+
+    externalSourceMakeApiCall: function(endpoint, method, body, midserver, accept, contentType, authorization) {
+
+        try {
+            CASLogger.debug('Inside  CASAppUtil.externalSourceMakeApiCall: Make a api call: endpoint: ' + endpoint);
+			var isClusterRouting = (gs.getProperty(this.configuration.properties.cluster_routing)).toLowerCase();
+            if (!(midserver == '' || midserver == 'undefined' || midserver == undefined)) {
+                var midGR = new GlideRecord(this.configuration.table.midserver);
+                midGR.addQuery('name', midserver);
+                midGR.query();
+                if (midGR.next()) {
+					if(isClusterRouting == true || isClusterRouting == 'true'){
+						var clusterStatusResult = this.clusterStatus(midserver);
+							if (clusterStatusResult == 'clusters are down'){
+								return "clusters are down";
+							}
+					}
+                    else if (midGR.status != 'Up') {
+                        CASLogger.error('CASAppUtil.externalSourceMakeApiCall: Mid Server status is down. Correct the Mid Server Status and perform the operation again.');
+                        return ;
+                    }
+
+                }
+            }
+            var API = endpoint;
+            var Date = gs.getProperty(this.configuration.properties.ApiVersionDate);
+            var ApiDate = "apiVersion=";
+            var check = API.indexOf('?');
+            var ModifiedAPI = '';
+
+            if (check > -1) {
+                CASLogger.debug('Inside if block of CASAppUtil.makeApiCall: Value of Check is ' + check);
+                ModifiedAPI = API + "&" + ApiDate + Date;
+
+            } else {
+                CASLogger.debug('Inside else block of CASAppUtil.makeApiCall: Value of Check is ' + check);
+                ModifiedAPI = API + "?" + ApiDate + Date;
+
+            }
+            CASLogger.debug('Inside  CASAppUtil.externalSourceMakeApiCall: ModifiedAPI: ' + ModifiedAPI);
+
+            var request = new sn_ws.RESTMessageV2();
+            request.setEndpoint(ModifiedAPI);
+            request.setHttpMethod(method);
+            if (method === 'post') {
+                request.setRequestBody(body);
+            }
+            if (midserver) {
+                request.setMIDServer(midserver);
+            }
+
+            if (authorization) {
+                request.setRequestHeader("Authorization", authorization);
+            }
+
+            request.setRequestHeader("Accept", accept);
+            request.setRequestHeader("Content-Type", contentType);
+            request.setRequestHeader("x-source", "ITSM");
+            request.setEccParameter('skip_sensor', true);
+
+
+            //var response = request.executeAsync();
+            var response = request.execute();
+            var httpstatus = response.getStatusCode();
+            CASLogger.debug('Inside CASAppUtil.externalSourceMakeApiCall: httpstatus is ' + httpstatus);
+
+            return response;
+
+        } catch (e) {
+
+            var error = e.toString().split(":")[0];
+            if (error == 'com.glide.ecc.ECCResponseTimeoutException') {
+                CASLogger.error("CASAppUtil.externalSourceMakeApiCall: API: " + API + " request was not executed sucessfully.Re-run the request after verifying the Mid Server." + e);
+            } else {
+                CASLogger.error("Exception caught inside CASAppUtil.externalSourceMakeApiCall " + e + ". Error found" + e.stack);
+            }
+        }
+    },
+
+    parse: function(str) {
+        if (str)
+            return JSON.parse(str);
+        return;
+    },
+
+
+    stringify: function(str) {
+        try {
+            CASLogger.debug('Inside CASAppUtil.stringify function str= -----' + str);
+            CASLogger.debug('Inside CASAppUtil.stringify function global= -----' + global);
+            CASLogger.debug('Inside CASAppUtil.stringify function JSON.stringify= -----' + JSON.stringify(str));
+            CASLogger.debug('Inside CASAppUtil.stringify function global.JSON.stringify=-----' + global.JSON.stringify(str));
+        } catch (e) {
+            CASLogger.error('Exception caught inside  CASAppUtil.stringify: ' + e);
+        }
+        return global.JSON.stringify(str);
+    },
+
+
+
+    arrToJSON: function(array) {
+        try {
+            CASLogger.debug('Inside CASAppUtil.arrToJSON');
+            CASLogger.debug('Inside CASAppUtil.arrToJSON Array Object =-----' + array);
+            var jsonObj = {};
+            for (var i = 0; i < array.length; i = i + 2) {
+                jsonObj[array[i]] = array[i + 1] + '';
+                CASLogger.debug('Inside CASAppUtil.arrToJSON For Loop -----Key----' + jsonObj[array[i]] + "----Value-----" + array[i + 1]);
+            }
+            CASLogger.debug('Inside CASAppUtil.arrToJSON  jsonObj before this.stringify -----' + jsonObj);
+            var myJsonString = this.stringify(jsonObj);
+            CASLogger.debug('Inside CASAppUtil.arrToJSON  myJsonString Object after this.stringify -----' + myJsonString);
+            return myJsonString;
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.arrToJSON: Exception Block: myJsonString: ' + myJsonString);
+            CASLogger.error('Exception caught inside  CASAppUtil.arrToJSON: ' + e);
+            CASLogger.error('Allianz Inside Catch block of CASAppUtil.arrToJSON: Exception = ' + e + "----Stack = " + e.stack + '---array----' + array + '----jsonObj----' + jsonObj + '-----myJsonString----- ' + myJsonString);
+        }
+    },
+
+
+    dateFormat: function(Anydate) {
+        try {
+            CASLogger.debug('Inside  CASAppUtil.dateFormat');
+            var today = new Date(Anydate);
+            CASLogger.debug('Inside CASAppUtil.dateFormat: Value of today is ' + today);
+            var dd = today.getDate();
+            var mm = today.getMonth() + 1;
+
+            var yyyy = today.getFullYear();
+            if (dd < 10) {
+                dd = '0' + dd;
+            }
+            if (mm < 10) {
+                mm = '0' + mm;
+            }
+            today = dd + '/' + mm + '/' + yyyy;
+            CASLogger.debug('Inside  CASAppUtil.dateFormat: today: ' + today);
+            return today;
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.dateFormat: Exception Block: today: ' + today + ' dd: ' + dd + ' mm: ' + mm + ' yyyy: ' + yyyy);
+            CASLogger.error('Exception caught inside  CASAppUtil.dateFormat: ' + e + ". Error found" + e.stack);
+        }
+    },
+
+
+    DelayApiCall: function(time) {
+        try {
+            CASLogger.debug('Inside  CASAppUtil.DelayApiCall. ');
+            var t1 = new GlideDateTime().getNumericValue();
+            var t2 = new GlideDateTime().getNumericValue();
+            var duration = t2 - t1;
+
+            while (duration < time) {
+
+                t2 = new GlideDateTime().getNumericValue();
+                duration = t2 - t1;
+            }
+            return true;
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.DelayApiCall: Exception Block: duration: ' + duration);
+            CASLogger.error('Exception caught inside  CASAppUtil.DelayApiCall.: ' + e + ". Error found" + e.stack);
+        }
+
+    },
+
+    stringToHash: function(string) {
+        try {
+            CASLogger.debug('Inside  CASAppUtil.stringToHash');
+
+            var hash = 0;
+
+            if (string.length == 0) return hash;
+
+            for (var i = 0; i < string.length; i++) {
+                var char1 = string.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char1;
+                hash = hash & hash;
+            }
+
+            return hash;
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.stringToHash: Exception Block: ' + 'string ' + string + ' Hash' + hash);
+            CASLogger.error('Exception caught inside  CASAppUtil.stringToHash.: ' + e + e.stack);
+        }
+    },
+
+    getGMTDateTime: function(dateTimeString, timeZone) {
+        try {
+            CASLogger.debug('Inside CASAppUtil.getGMTDateTime: Value of timeZone is ' + timeZone);
+            if (timeZone == 'GMT') {
+                var t1 = new GlideDateTime(dateTimeString);
+                var t2 = t1.getNumericValue();
+                var t3 = new Date(t2);
+                return t3.toGMTString();
+
+            } else if (timeZone == 'Local' || timeZone == 'local') {
+                var test2 = new Date(dateTimeString);
+                return test2.toGMTString();
+
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.getGMTDateTime: Exception Block: t3: ' + t3 + 'test2: ' + test2);
+            CASLogger.error('Exception caught inside  CASAppUtil.getGMTDateTime: ' + e + ". Error found" + e.stack);
+        }
+    },
+    timeOutMessage: function(statuscode) {
+        try {
+            CASLogger.debug('Inside CASAppUtil.timeOutMessage: Value of statuscode is ' + statuscode);
+            if (statuscode == 0 || statuscode == '0') {
+                return "VMware Aria Automation Plugin is unable to connect resulting in Http request timeout";
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.timeOutMessage: Exception Block : statuscode: ' + statuscode);
+            CASLogger.error('Exception caught inside  CASAppUtil.timeOutMessage: ' + e + ". Error found" + e.stack);
+        }
+    },
+    appendLeadingZeroes: function(n) {
+        try {
+            if (n <= 9) {
+                return "0" + n;
+            }
+            return n;
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.appendLeadingZeroes: Exception Block : number: ' + n);
+            CASLogger.error('Exception caught inside  CASAppUtil.appendLeadingZeroes: ' + e + ". Error found" + e.stack);
+        }
+    },
+
+    /*     Function Name: getServicenowRequestInfo
+           Comments: This function is use to get the RITM number and requester's info for day-0 and day-2 requests. VSNOW-3157
+    */
+
+    getServicenowRequestInfo: function(ritm) {
+        try {
+            CASLogger.debug('Inside CASAppUtil.getServicenowRequestInfo:  RITM : ' + ritm.number);
+            var requestData = {};
+            var requester = (ritm.requested_for.email) ? ritm.requested_for.email + '' : ritm.requested_for.user_name + '';
+            requestData.ritm_number = ritm.number + '';
+            requestData.requester = requester;
+            CASLogger.debug('Inside CASAppUtil.getServicenowRequestInfo:  requestData : ' + JSON.stringify(requestData));
+            return requestData;
+        } catch (e) {
+            CASLogger.debug('Inside Catch block of CASAppUtil.getServicenowRequestInfo: Exception Block : requestData : ' + JSON.stringify(requestData));
+            CASLogger.error('Exception caught inside  CASAppUtil.getServicenowRequestInfo: ' + e + ". Error found" + e.stack);
+        }
+    },
+
+    type: 'CASAppUtil'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-05-07 14:46:44</sys_created_on>
+        <sys_id>41c6b7851b1533000f14986cbc4bcb84</sys_id>
+        <sys_mod_count>385</sys_mod_count>
+        <sys_name>CASAppUtil</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_41c6b7851b1533000f14986cbc4bcb84</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-12-17 09:24:25</sys_updated_on>
+    </sys_script_include>
+</record_update>

@@ -1,0 +1,745 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope) {
+
+    var c = this;
+    //global variables
+    $scope.searchText = '';
+    c.data.finalValue = '';
+    $scope.defaultValue = {};
+    $scope.fetchedValues = [];
+    $scope.loader = false;
+    $scope.valueSelection = false;
+    $scope.run = true;
+    // $scope.preRun = false;
+    var macroJSON = c.data.field_name ? JSON.parse($scope.page.g_form.getValue('macro_' + c.data.field_name)) : '';
+
+    if (macroJSON.field_name) {
+        $scope.run = false;
+    }
+
+    //Adding an $watch to the Deployment field of the Catalog Form for onChange handling of the Valuepciker Data.
+    $scope.$watch(function() {
+        return $scope.page.g_form.getValue('macro_' + c.data.field_name);
+    }, function(value) {
+        $scope.run = false;
+        if (JSON.parse(value).model) {
+            c.data.action = 'reinstantiateWidget';
+            c.data.options = JSON.parse(value);
+            c.server.update().then(function(resp) {
+                c.data.action = '';
+                $scope.run = true;
+                c.data.valuePickerJSON = resp.valuePickerJSON;
+            })
+
+        }
+    })
+
+
+    //setting variables for the onSubmit validations.
+    function setOnSubmitVariables() {
+        if (c.data.portal_page == 'sc_cat_item') {
+            c.data.projectId = $scope.page.g_form.getValue('u_project');
+            ($scope.page.g_form.getField(c.data.valuePickerJSON.macro_name) || {}).portal = 'service portal';
+            $scope.page.g_form.setMandatory(c.data.valuePickerJSON.macro_name, c.data.mandatory);
+            $scope.page.g_form.setMandatory(c.data.valuePickerJSON.name, false);
+            $scope.page.g_form.setDisplay(c.data.valuePickerJSON.name, false);
+            ($scope.page.g_form.getField(c.data.valuePickerJSON.macro_name) || {}).mandatory = c.data.mandatory;
+            ($scope.page.g_form.getField(c.data.valuePickerJSON.macro_name) || {}).answer = c.data.finalValue;
+            ($scope.page.g_form.getField(c.data.valuePickerJSON.macro_name) || {}).searchText = $scope.searchText;
+        }
+    }
+    //     setOnSubmitVariables();
+
+    //method for set the final selected value in the valuepicker field.
+    $scope.setFinalValue = function(finalValue) {
+
+        if ($scope.page.g_form != undefined) {
+
+            if (finalValue != undefined && finalValue != null) {
+
+                if (typeof finalValue == 'object' && finalValue.hasOwnProperty('$$hashKey')) {
+                    delete finalValue['$$hashKey'];
+                }
+
+                if (typeof finalValue == 'string') {
+                    $scope.page.g_form.setValue(c.data.valuePickerJSON.name, finalValue);
+                } else {
+                    var finalValueObj = {
+                        'id': finalValue.value,
+                        'label': finalValue.label,
+                        'type': c.data.valuePickerJSON.json.type.referenceType
+                    };
+                    $scope.page.g_form.setValue(c.data.valuePickerJSON.name, JSON.stringify(finalValueObj));
+                }
+
+
+            }
+
+        }
+
+    };
+
+    //method for update the final answer.
+    function updateFinalAnswer(value) {
+        if (typeof value == 'object') {
+            var finalValueObj = {
+                'id': value.value,
+                'label': value.label,
+                'type': c.data.valuePickerJSON.json.type.referenceType
+            };
+            $scope.page.g_form.getField(c.data.valuePickerJSON.macro_name).answer = finalValueObj;
+        } else {
+            $scope.page.g_form.getField(c.data.valuePickerJSON.macro_name).answer = value;
+        }
+
+    }
+
+    //assinging the constant default value if any.
+    function assignConstantDefaultValue() {
+        if (Object.keys(c.data.defaultValue) != 0) {
+            $scope.defaultValue = c.data.defaultValue;
+            c.data.finalValue = c.data.defaultValue;
+            $scope.setFinalValue($scope.defaultValue);
+            updateFinalAnswer($scope.defaultValue);
+            $scope.searchText = c.data.defaultValue.label;
+
+        } else {
+            updateFinalAnswer('');
+        }
+    }
+    //     assignConstantDefaultValue();
+
+    /*
+    Function Name: fetchDefaultExternalValue
+    Comments: This function is use to fetch the default external value of the valupicker.
+    Updated On: 30 April 2021
+    Updated By: Prateek
+    Update Comments: Adding the condition for Day2 Action request parameters creation.
+    */
+    function fetchDefaultExternalValue() {
+        if (c.data.valuePickerJSON.defaultClientScript != '' && Object.keys(c.data.defaultValue) == 0) {
+
+            $scope.loader = true;
+            c.data.action = 'fetchExternalDefaultValues';
+            c.data.readOnly = true;
+            c.data.deployment = $scope.page.g_form.getValue('deployment');
+
+            c.server.update().then(function(resp) {
+                c.data.action = '';
+                $scope.loader = false;
+                c.data.readOnly = false;
+                $scope.searchText = resp.defaultValue.label;
+                $scope.defaultValue = resp.defaultValue;
+                c.data.finalValue = resp.defaultValue;
+                $scope.setFinalValue(resp.defaultValue);
+                updateFinalAnswer(resp.defaultValue);
+
+            });
+        }
+    }
+    //     fetchDefaultExternalValue();
+
+    /*
+    Function Name : fetchVPData
+    Comments: This function is use for fetching the Values for the Valuepicker..
+    Updated On: 30 April 2021
+    Updated By: Prateek
+    Update Comments : Adding the condition for Day2 Action request parameters creation.
+    */
+    $scope.fetchVPData = function() {
+
+        $scope.fetchedValues = [];
+
+        if (c.data.fetchingType == 'reference') {
+            $scope.loader = true;
+            c.data.searchText = $scope.searchText;
+            c.data.action = 'fetchReferenceValues';
+            c.data.readOnly = true;
+            c.data.deployment = $scope.page.g_form.getValue('deployment');
+
+            c.server.update().then(function(resp) {
+                c.data.action = '';
+                $scope.loader = false;
+                $scope.fetchedValues = resp.fetchedValues;
+                c.data.readOnly = false;
+                setTimeout(function() {
+                    document.getElementById('valuepicker_search' + c.data.valuePickerJSON.name).focus();
+                }, 0);
+            });
+
+        } else if (c.data.fetchingType == 'external') {
+
+            if (!Array.isArray(c.data.valuePickerJSON.json.valueList) && c.data.valuePickerJSON.valueClientScript != '' && c.data.fetchedValues.length == 0) {
+
+                $scope.loader = true;
+                c.data.action = 'fetchExternalValues';
+                c.data.readOnly = true;
+                c.data.deployment = $scope.page.g_form.getValue('deployment');
+
+                c.server.update().then(function(resp) {
+                    c.data.action = '';
+                    $scope.loader = false;
+                    if ($scope.searchText) {
+                        $scope.fetchedValues = getSearchItems($scope.searchText);
+                    } else {
+                        $scope.fetchedValues = c.data.fetchedValues;
+                    }
+                    c.data.readOnly = false;
+                    setTimeout(function() {
+                        document.getElementById('valuepicker_search' + c.data.valuePickerJSON.name).focus();
+                    }, 0);
+                });
+
+            } else {
+                if ($scope.searchText) {
+                    $scope.fetchedValues = getSearchItems($scope.searchText);
+                } else {
+                    $scope.fetchedValues = c.data.fetchedValues;
+                }
+            }
+
+        } else if (c.data.fetchingType == 'constant') {
+
+            if ($scope.searchText) {
+                $scope.fetchedValues = getSearchItems($scope.searchText);
+            } else {
+                $scope.fetchedValues = c.data.fetchedValues;
+            }
+            setTimeout(function() {
+                document.getElementById('valuepicker_search' + c.data.valuePickerJSON.name).focus();
+            }, 0);
+
+        }
+
+        $('#valuepicker_listbox' + c.data.valuePickerJSON.name).show();
+        setTimeout(function() {
+            document.getElementById('valuepicker_search' + c.data.valuePickerJSON.name).focus();
+        }, 0);
+
+
+    };
+
+    //method for searching the search item from the fetched values.
+    function getSearchItems(searchText) {
+
+        var outputArr = [];
+        if (c.data.fetchedValues.length > 0) {
+            c.data.fetchedValues.forEach(function(item) {
+
+                if (item.label.toLowerCase().indexOf(searchText.toLowerCase()) != -1) {
+                    outputArr.push(item);
+                }
+
+            });
+
+            return outputArr;
+        } else {
+            return [];
+        }
+    }
+
+    //method for selecting the option from the list.
+    $scope.selectValue = function(value, evt) {
+
+        if (evt.which == 1) {
+            $scope.valueSelection = true;
+            $scope.searchText = value.label;
+            c.data.finalValue = value;
+            $scope.setFinalValue(c.data.finalValue);
+            updateFinalAnswer(c.data.finalValue);
+            $scope.page.g_form.getField(c.data.valuePickerJSON.macro_name).searchText = $scope.searchText;
+            if (c.data.mandatory) {
+                $('#valuepicker_search' + c.data.valuePickerJSON.name).css({
+                    "border": "1px solid #ccc",
+                    "box-shadow": "none"
+                });
+                $('#valuepicker_search_btn' + c.data.valuePickerJSON.name).css({
+                    "border": "1px solid #ccc",
+                    "box-shadow": "none"
+                });
+            }
+            $('#valuepicker_listbox' + c.data.valuePickerJSON.name).hide();
+        }
+
+    };
+
+    //method for clearing the answer or value of the valuepicker from the clear button
+    $scope.clearValue = function(evt) {
+        if (!(evt.detail == 0 && evt.pageX == 0 && evt.pageY == 0)) {
+            $scope.searchText = '';
+            c.data.finalValue = '';
+            $scope.setFinalValue(c.data.finalValue);
+            updateFinalAnswer(c.data.finalValue);
+            if (c.data.mandatory) {
+                $('#valuepicker_search' + c.data.valuePickerJSON.name).css({
+                    "border": "1px solid #64201a",
+                    "box-shadow": "inset 0 1px 1px rgba(0,0,0,0.075), 0 0 6px #b5392f"
+                });
+                $('#valuepicker_search_btn' + c.data.valuePickerJSON.name).css({
+                    "border-bottom": "1px solid #64201a",
+                    "border-top": "1px solid #64201a",
+                    "border-right": "1px solid #64201a",
+                    "box-shadow": "inset 0 1px 1px rgba(0,0,0,0.075), 0 0 6px #b5392f"
+                });
+            }
+            $('#valuepicker_listbox' + c.data.valuePickerJSON.name).hide();
+        }
+
+    };
+
+    /*
+    Function Name: hideValuelist
+    Comments: Method for hide the valuelist if the focus of the user is out of valuepicker
+    Updated On: 17 May 2021
+    Updated By: Bharat
+    Update Comments: Added mouseup condition to check for lost focus
+    */
+    //method for hide the valuelist if the focus of the user is out of valuepicker
+    $scope.hideValuelist = function() {
+
+        if ($scope.valueSelection) {
+            $scope.valueSelection = false;
+        }
+
+        $(document).mouseup(function(e) {
+            var container = $('#valuepicker_listbox' + c.data.valuePickerJSON.name);
+            // If the target of the click isn't the container
+            if (!container.is(e.target) && container.has(e.target).length === 0) {
+                container.hide();
+            }
+        });
+
+
+    };
+
+    //method for updating the answer and value of the valuepicker when the user changes the input value (on-change)
+    $scope.updateAnswer = function() {
+
+        if (c.data.mandatory) {
+            if ((typeof c.data.finalValue == 'string' && c.data.finalValue == '') || (typeof c.data.finalValue == 'object' && Object.keys(c.data.finalValue) == 0)) {
+                $('#valuepicker_search' + c.data.valuePickerJSON.name).css({
+                    "border": "1px solid #64201a",
+                    "box-shadow": "inset 0 1px 1px rgba(0,0,0,0.075), 0 0 6px #b5392f"
+                });
+                $('#valuepicker_search_btn' + c.data.valuePickerJSON.name).css({
+                    "border-bottom": "1px solid #64201a",
+                    "border-top": "1px solid #64201a",
+                    "border-right": "1px solid #64201a",
+                    "box-shadow": "inset 0 1px 1px rgba(0,0,0,0.075), 0 0 6px #b5392f"
+                });
+            } else {
+                $('#valuepicker_search' + c.data.valuePickerJSON.name).css({
+                    "border": "1px solid #ccc",
+                    "box-shadow": "none"
+                });
+                $('#valuepicker_search_btn' + c.data.valuePickerJSON.name).css({
+                    "border": "1px solid #ccc",
+                    "box-shadow": "none"
+                });
+            }
+        }
+        $scope.page.g_form.getField(c.data.valuePickerJSON.macro_name).searchText = $scope.searchText;
+        $('#valuepicker_listbox' + c.data.valuePickerJSON.name).hide();
+    };
+
+    //Condition for running the Valuepicker Functionality
+    //If $scope.run == true, the Valuepicker functionality is started running.
+    if ($scope.run) {
+        setOnSubmitVariables();
+        assignConstantDefaultValue();
+        fetchDefaultExternalValue();
+    }
+
+    //Added a $watch to the $scope.run flag so that whenever the flag is changed we need to start the Valuepicker functionality.
+    $scope.$watch('run', runValuePicker);
+
+    /*
+    Function Name: runValuePicker
+    Comments: This function is use to call and instatiate the Valuepicker functionalities.
+    Updated On: 6 April 2021
+    Updated By: Prateek
+    Update Comments: NA
+    */
+    function runValuePicker() {
+        if ($scope.run) {
+            setOnSubmitVariables();
+            assignConstantDefaultValue();
+            fetchDefaultExternalValue();
+            // $scope.preRun = $scope.run;
+        }
+    }
+
+};]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.valuepicker_listbox{&#13;
+    display: none;&#13;
+    width: 94.5%;&#13;
+    top: 90%;&#13;
+    height: auto;&#13;
+    max-height: 170px;&#13;
+    overflow: auto;&#13;
+}&#13;
+&#13;
+.valuelist{&#13;
+    cursor: pointer;&#13;
+    padding-left: 12px;&#13;
+    border-bottom: 1px solid #efefef; &#13;
+}&#13;
+&#13;
+.valuelist:hover{&#13;
+    background-color: #99dad1;&#13;
+}&#13;
+&#13;
+.input_clear_btn{&#13;
+    position: absolute;&#13;
+    right: 40px;&#13;
+    font-size: 15px;&#13;
+    cursor: pointer;&#13;
+    z-index: 101;&#13;
+}&#13;
+&#13;
+.clear_btn{&#13;
+    height: 34px;&#13;
+    padding: 0px 10px 0px 10px;&#13;
+    background: transparent;&#13;
+    border: 0;&#13;
+}&#13;
+&#13;
+.custom-clear-icon{&#13;
+    color: #888;&#13;
+    font-size: 17px;&#13;
+}&#13;
+&#13;
+.custom-search-icon{&#13;
+    color: #888;&#13;
+}&#13;
+&#13;
+.input_clear_btn &gt; button:disabled{&#13;
+    cursor: not-allowed;&#13;
+}&#13;
+&#13;
+.no_option_list{&#13;
+    padding-left: 13px;&#13;
+    font-size: 1em;&#13;
+    color: #949494;&#13;
+}&#13;
+&#13;
+.vp_pagination{&#13;
+    font-size: 1em;&#13;
+    color: #575757;&#13;
+    padding-left: 12px;&#13;
+    position: relative;&#13;
+    top: 5px;&#13;
+}&#13;
+&#13;
+.vp_loader{&#13;
+	  height: 22px;&#13;
+    width: 100%;&#13;
+}&#13;
+&#13;
+.onload-loader{&#13;
+    text-align: center;&#13;
+    color: #777;&#13;
+    font-size: 14px;&#13;
+    font-weight: lighter;&#13;
+    margin: 0px;&#13;
+    letter-spacing: 1.2px;&#13;
+    /* padding: 0px 0 3px 0; */&#13;
+    position: relative;&#13;
+    top: -60px;&#13;
+		height: 0px;&#13;
+}&#13;
+&#13;
+.onload-loader span{&#13;
+    animation: blink 1s ease infinite;&#13;
+    font-size: 70px;&#13;
+    letter-spacing: -10px;&#13;
+}&#13;
+&#13;
+.onload-loader span:nth-child(1){&#13;
+    animation-delay: .2s;&#13;
+}&#13;
+.onload-loader span:nth-child(2){&#13;
+    animation-delay: .4s;&#13;
+}&#13;
+.onload-loader span:nth-child(3){&#13;
+    animation-delay: .6s;&#13;
+}&#13;
+&#13;
+@keyframes blink{&#13;
+  0%{&#13;
+    opacity:0.2;&#13;
+  },&#13;
+  100%{&#13;
+    opacity:1;&#13;
+  }&#13;
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description>/************************************************************
+* Copyright (c) 2021-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/</description>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>cas_sp_valuepicker</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>CAS_SP_valuePicker</name>
+        <option_schema>[{"name":"valuepicker_options","section":"other","label":"valuepickeroptions","type":"string"}]</option_schema>
+        <public>false</public>
+        <roles>x_vmw_cloudservice.vra_end_user,x_vmw_cloudservice.vra_catalog_admin</roles>
+        <script><![CDATA[(function() {
+    /* populate the 'data' object */
+    /* e.g., data.table = $sp.getValue('table'); */
+
+    data.portal_page = $sp.getParameter('id');
+    data.cat_sys_id = $sp.getParameter('sys_id');
+
+    /*
+    Function Name: initiateValuePickerWidget
+    Comments: This function is use to create the variables & object use to define and populate the Valuepicker.
+    Updated On: 8 June 2021
+    Updated By: Prateek
+    Update Comments: Handling the direct binding default value of the valuepicker.
+    */
+    function initiateValuePickerWidget(data) {
+        try {
+
+            data.readOnly = (data.valuePickerJSON.read_only == 'true' || data.valuePickerJSON.read_only == true) ? true : false;
+            data.mandatory = data.valuePickerJSON.mandatory;
+            data.placeholder = 'Search Here'; //data.valuePickerJSON.json.placeholder || 'Search Here';
+            data.fetchingType = '';
+            data.fetchedValues = [];
+            data.defaultValue = {};
+            data.valuePickerJSON.defaultClientScript = '';
+            data.valuePickerJSON.valueClientScript = '';
+			
+			if(!data.valuePickerJSON.binding){
+				data.valuePickerJSON.binding = [];
+			}
+
+            //preparing the 'valueClientScript' string for help in calling external value API.
+            if (data.valuePickerJSON.json.valueList != undefined && !Array.isArray(data.valuePickerJSON.json.valueList)) {
+                data.valuePickerJSON.valueClientScript = 'OnLoad__' + data.valuePickerJSON.json.valueList.id + '__' + data.valuePickerJSON.json.valueList.type + '__' + data.valuePickerJSON.json.valueList.parameters + '__' + data.valuePickerJSON.versions;
+            }
+
+            //preparing the 'defaultClientScript' string for help in calling external defualt value API.
+            if (data.valuePickerJSON.json['default'] != undefined && data.valuePickerJSON.json['default'].id != undefined) {
+                data.valuePickerJSON.defaultClientScript = 'OnLoad__' + data.valuePickerJSON.json['default'].id + '__' + data.valuePickerJSON.json['default'].type + '__' + data.valuePickerJSON.json['default'].parameters + '__' + data.valuePickerJSON.versions;
+            }
+
+
+            //setting the fetchingType varibale.
+            if (Array.isArray(data.valuePickerJSON.json.valueList) && data.valuePickerJSON.valueClientScript == '') {
+                if (data.valuePickerJSON.json.valueList.length == 0 && (data.valuePickerJSON.json.type.referenceType.toLowerCase() != 'properties' && data.valuePickerJSON.json.type.referenceType.toLowerCase() != '')) {
+                    data.fetchingType = 'reference';
+                } else {
+                    data.fetchedValues = data.valuePickerJSON.json.valueList;
+                    data.fetchingType = 'constant';
+                }
+            } else {
+                if (data.valuePickerJSON.json.type.referenceType.toLowerCase() == 'properties') {
+                    data.fetchingType = 'external';
+                } else {
+                    data.fetchingType = 'reference';
+                }
+            }
+
+            //assinging the constant default value.
+            if (data.valuePickerJSON.json['default'] != undefined) {
+                if (data.valuePickerJSON.json['default'].label) {
+                    data.defaultValue = data.valuePickerJSON.json['default'];
+                }
+            }
+			
+			//assinging the default value thats comes from direct binding.
+			if(data.valuePickerJSON.binding.length){
+				data.valuePickerJSON.binding.forEach(function(field){
+					if(field.key === data.valuePickerJSON.org_name){
+						if(field.value.value){
+							data.defaultValue = field.value.value;
+						}
+					}
+				});
+			}
+
+        } catch (e) {
+            CASLogger.error("Exception inside CAS_valuepicker Widget.initiateValuePickerWidget : " + e);
+        }
+    }
+
+    try {
+
+        if (!input) {
+            data.field_name = options.field_name || '';
+        }
+
+        if (!input && options.field) {
+            //defining the global variables
+			data.field_name = options.field.name || '';
+            data.valuePickerJSON = options.field;
+            initiateValuePickerWidget(data);
+        }
+
+        //reinstatiate the ValuePicker Widget with new Schema
+        if (input && input.action == 'reinstantiateWidget') {
+
+            if (input.options.model) {
+				var prev_name = input.field_name;
+                var fieldId = input.options['id'];
+                var schema = input.options.model.schema[fieldId];
+				var binding = input.options.model.binding ? input.options.model.binding.entries ? input.options.model.binding.entries : [] : [];
+                var state = {};
+				
+                input.options.model.layout.pages.forEach(function(page) {
+                    page.sections.forEach(function(section) {
+                        section.fields.forEach(function(field) {
+                            if (field.id === fieldId) {
+                                state = field.state;
+                            }
+                        });
+                    });
+                });
+
+                //Handle fallback of Constraints object for valuepicker (if the 'state' object is not available for valuepicker under the Layout object)
+                var field = {
+                    visible: state ? state.visible || true : true,
+                    versions: '',
+                    read_only: state ? state['read-only'] || false : false,
+                    mandatory: schema.constraints ? schema.constraints.required || false : false, //handle the fallback condition for mandatory
+                    macro_name: "macro_" + prev_name,
+                    name: prev_name,
+					org_name: fieldId,
+                    display_name: schema.label,
+                    json: schema,
+					binding: binding || []
+                };
+
+                options.field = field;
+                data.valuePickerJSON = field;
+
+                initiateValuePickerWidget(data);
+            }
+        }
+
+        //calling the refernce API and fetching the values
+        if (input && input.action == 'fetchReferenceValues') {
+
+            this.clientBridge = new CSClientScriptBridge();
+            var response = JSON.parse(this.clientBridge.getValuepickerReferencedValues(data.cat_sys_id, input.valuePickerJSON.json.type.referenceType, input.searchText, input.deployment));
+
+            data.fetchedValues = response.items;
+
+        }
+
+        //calling the external source API and fetching the values.
+        if (input && input.action == 'fetchExternalValues') {
+
+            this.clientBridge = new CSClientScriptBridge();
+
+            var scriptArr = input.valuePickerJSON.valueClientScript.split('__');
+            var uri = scriptArr[1];
+            var datasource = scriptArr[2];
+            var parameters = scriptArr[3];
+            var projectId = input.projectId;
+            var deployment = input.deployment;
+
+            var response = JSON.parse(this.clientBridge.getValuepickerExternalValues(data.cat_sys_id, parameters, uri, datasource, projectId, deployment));
+            data.fetchedValues = response.data;
+
+        }
+
+        //calling the external source API and fetching the default values.
+        if (input && input.action == 'fetchExternalDefaultValues') {
+
+            this.clientBridge = new CSClientScriptBridge();
+
+            var scriptArr = input.valuePickerJSON.defaultClientScript.split('__');
+            var uri = scriptArr[1];
+            var datasource = scriptArr[2];
+            var parameters = scriptArr[3];
+            var projectId = input.projectId;
+            var deployment = input.deployment;
+
+            var response = JSON.parse(this.clientBridge.getValuepickerExternalValues(data.cat_sys_id, parameters, uri, datasource, projectId, deployment));
+            data.defaultValue = response.data;
+        }
+
+    } catch (e) {
+        CASLogger.error("Exception inside CAS_valuepicker Widget : " + e);
+    }
+
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2021-03-23 13:00:07</sys_created_on>
+        <sys_id>30c258c62f8720104ef1aa5df699b676</sys_id>
+        <sys_mod_count>503</sys_mod_count>
+        <sys_name>CAS_SP_valuePicker</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sp_widget_30c258c62f8720104ef1aa5df699b676</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 12:28:53</sys_updated_on>
+        <template><![CDATA[<div>
+<div class="input-group input-group" ng-blur="hideValuelist()">
+    <input
+        name="{{c.data.valuePickerJSON.name}}"
+        type="text"
+        ng-model="searchText"
+        id="{{'valuepicker_search'+c.data.valuePickerJSON.name}}"
+        autocomplete="off"  
+        class="form-control input-typeahead ng-pristine ng-untouched ng-valid ng-scope ng-empty"
+        role="textbox"
+        tabindex="0"
+        placeholder="{{c.data.placeholder}}"
+        aria-invalid="false"
+        ng-disabled="c.data.readOnly"
+        ng-change="updateAnswer()"
+        ng-blur="hideValuelist()"
+    />
+    <div
+        class="typeahead-popup dropdown-menu ng-isolate-scope valuepicker_listbox"
+        ng-style="{top: position().top+'px', left: position().left+'px', display: block}"
+        role="listbox"
+        id="{{'valuepicker_listbox' + c.data.valuePickerJSON.name}}"
+    >
+        <div class="vp_loader" ng-if="((fetchedValues.length == 0) && loader)" >
+            <div class="onload-loader">
+                Loading
+                <span>.</span>
+                <span>.</span>
+                <span>.</span>
+            </div>
+        </div> 
+        
+        <div ng-if="fetchedValues.length == 0 && !loader" class="no_option_list">No matching values found</div>
+        
+        <div role="option"  ng-repeat="item in fetchedValues" class="valuelist" ng-mousedown="selectValue(item, $event)">{{item.label}}</div>
+
+        <div ng-if="fetchedValues.length != 0 && !loader" class="vp_pagination">Showing {{fetchedValues.length}} of {{fetchedValues.length}} results.</div>
+    </div>
+
+    <span class="input_clear_btn">
+        <button id="{{'valuepicker_clear_btn'+c.data.valuePickerJSON.name}}" name="clear" class="clear_btn" ng-click="clearValue($event);"  ng-disabled="c.data.readOnly">
+            <i class="fa fa-times-circle-o custom-clear-icon" ></i>
+        </button>
+    </span>
+    <span class="input-group-btn">
+        <button id="{{'valuepicker_search_btn'+c.data.valuePickerJSON.name}}" name="search" type="submit" class="btn btn-default" title="Search" aria-label="Search" ng-click="fetchVPData()"   ng-disabled="c.data.readOnly">
+            <i class="fa fa-arrow-right custom-search-icon"></i>
+        </button>
+    </span>
+</div>
+</div>]]></template>
+    </sp_widget>
+</record_update>

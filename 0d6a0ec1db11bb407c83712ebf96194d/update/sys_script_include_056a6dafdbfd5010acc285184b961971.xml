@@ -1,0 +1,766 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>public</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.FetchVersions</api_name>
+        <caller_access/>
+        <client_callable>true</client_callable>
+        <description/>
+        <name>FetchVersions</name>
+        <script><![CDATA[
+/************************************************************
+* Copyright (c) 2020-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+***********************************************************/
+
+var FetchVersions = Class.create();
+FetchVersions.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+	
+onChangeVersions: function() {
+        try {
+            CASLogger.debug('Inside the FetchVersions.onChangeVersions. ');
+            var catalogSysid = this.getParameter('sysparm_sys_id');
+            var newValue = this.getParameter('sysparm_newValue');
+            CASLogger.debug('Inside FetchVersions.onChangeVersions: CatalogSysid: ' + catalogSysid + ' newValue: ' + newValue);
+            var grCatItem = new GlideRecord('item_option_new');
+            grCatItem.addQuery('cat_item', catalogSysid);
+            grCatItem.addQuery('x_vmw_cloudservice_versions', '!=', newValue + ',');
+            grCatItem.query();
+            //gs.addErrorMessage('Si count=' + grCatItem.getRowCount());
+            var inputdata = [];
+            if (grCatItem.hasNext()) {
+                while (grCatItem.next()) {
+
+                    inputdata = inputdata + grCatItem.name + ',';
+                }
+                CASLogger.debug('Inside FetchVersions.onChangeVersions:---inputdata: ' + inputdata.toString());
+                return inputdata.toString();
+            } else {
+                CASLogger.debug('Inside else block of FetchVersions.onChangeVersions. ');
+                return 'false';
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of FetchVersions.onChangeVersions: Exception Block: catalogSysid: ' + catalogSysid + ' newValue: ' + newValue + ' inputdata: ' + inputdata);
+            CASLogger.error('Exception caught inside the FetchVersions.onChangeVersions: ' + e + ". Error found" + e.stack);
+        }
+    },
+
+    /*	
+Function Name :getCatalogProjects
+Comments: This function is used to return projects on load of Catalog form
+Updated On:21/09/2021, 21/06/2022
+Updated By: Ayush Aman, Prajakta
+Update Comments : Added a new modified condition to get specific match of the category id for particular catalogs
+Prajakta Updates : Added condition to exclude categories without ID(custom category)for catalog items.
+*/
+    getCatalogProjects: function() {
+        try {
+            CASLogger.debug('Inside the FetchVersions.getCatalogProjects: To return projects on load of Catalog form.');
+            this.appUtil = new CASAppUtil();
+            var catalogSysid = this.getParameter('sysparm_sys_id');
+            var categoryId = this.getParameter('sysparm_category_id');
+            CASLogger.debug('Inside FetchVersions.getCatalogProjects: CatalogSysid: ' + catalogSysid + ' CategoryId: ' + categoryId);
+            var categoryGR = new GlideRecord(this.appUtil.configuration.table.project); //
+            //categoryGR.addEncodedQuery('sys_idSTARTSWITH' + categoryId);
+            categoryGR.addQuery('sys_id', categoryId);
+            categoryGR.query();
+            if (categoryGR.next() && categoryGR.parent && categoryId) {
+                var inputdata = [];
+                var input = {
+                    "name": "",
+                    "id": ""
+                };
+                input.name = categoryGR["title"] + '';
+                input.id = categoryGR["project_id"] + '';
+				if(input.id != 'undefined' && input.id != undefined){
+                inputdata.push(input);
+				}
+                CASLogger.debug('Inside if block of categoryGR.next(): FetchVersions.getCatalogProjects: inputdat: ' + JSON.stringify(inputdata));
+                return JSON.stringify(inputdata);
+            } else {
+                var grCatItem = new GlideRecord('sc_cat_item_category');
+                grCatItem.addQuery('sc_cat_item', catalogSysid);
+                grCatItem.query();
+                var inputdata = [];
+                if (grCatItem.hasNext()) {
+                    while (grCatItem.next()) {
+                        var project = grCatItem["sc_category"]["sys_id"];
+                        var user = false,
+                            roles = false,
+                            groups = false;
+                        var gr = new GlideRecord("sc_category_user_criteria_mtom");
+                        gr.addQuery('sc_category', project + '');
+                        gr.query();
+                      //  CASLogger.debug('Inside while loop of grCatItem.next(): FetchVersions.getCatalogProjects. ');
+                        if (gr.hasNext()) {
+                            while (gr.next()) {
+                                var criteria = gr.user_criteria;
+                                if (criteria.user) {
+                                    var users = criteria.user;
+                                    if (users.contains(gs.getUserID())) {
+                                        user = true;
+                                    }
+                                    CASLogger.debug('Inside if block of criteria.user: FetchVersions.getCatalogProjects. ');
+                                }
+                                if (criteria.group) {
+                                    var group = criteria.group;
+                                    group = group.split(",");
+                                    for (var i in group) {
+                                        var grp = new GlideRecord('sys_user_grmember');
+                                        grp.addQuery('user', gs.getUserID());
+                                        grp.addQuery('group', group[i]);
+                                        grp.query();
+                                        if (grp.next()) {
+                                            groups = true;
+
+                                        }
+
+                                    }
+                                    CASLogger.debug('Inside if block of criteria.group: FetchVersions.getCatalogProjects. ');
+
+                                }
+                                if (criteria.role) {
+                                    var role = criteria.role.split(",");
+                                    for (var j in role) {
+                                        var hasRole = new GlideRecord('sys_user_has_role');
+                                        hasRole.addQuery('role', role[j]);
+                                        hasRole.addQuery('user', gs.getUserID());
+                                        hasRole.query();
+                                        if (hasRole.next()) {
+                                            roles = true;
+                                        }
+                                    }
+                                    CASLogger.debug('Inside if block of criteria.role: FetchVersions.getCatalogProjects. ');
+                                }
+                             //   CASLogger.debug('Inside while loop of gr.next(): FetchVersions.getCatalogProjects. ');
+                            }
+                            if (user == true || roles == true || groups == true) {
+                                var input = {
+                                    "name": "",
+                                    "id": ""
+                                };
+                                input.name = grCatItem["sc_category"]["title"] + '';
+                                input.id = grCatItem["sc_category"]["project_id"] + '';
+								if(input.id != 'undefined' && input.id != undefined){
+                                inputdata.push(input);
+								}
+                                CASLogger.debug('Inside if block of user-roles-groups:FetchVersions.getCatalogProjects. ');
+                            }
+                        } else {
+
+                            var noMtomGR = new GlideRecord('sc_category_user_criteria_no_mtom');
+                            noMtomGR.addQuery('sc_category', project + '');
+                            noMtomGR.query();
+                            var noRole = false,
+                                noUser = false,
+                                noGroup = false;
+                            while (noMtomGR.next()) {
+                                var criteria = noMtomGR.user_criteria;
+                                if (criteria.user) {
+
+                                    var users = criteria.user;
+                                    if (users.contains(gs.getUserID())) {
+                                        noUser = true;
+                                    }
+                                    CASLogger.debug('Inside if block of criteria.user: noMtomGR.next(): FetchVersions.getCatalogProjects. ');
+
+                                }
+                                if (criteria.group) {
+                                    var group = criteria.group;
+                                    group = group.split(",");
+                                    for (var i in group) {
+                                        var grp = new GlideRecord('sys_user_grmember');
+                                        grp.addQuery('user', gs.getUserID());
+                                        grp.addQuery('group', group[i]);
+                                        grp.query();
+                                        if (grp.next()) {
+                                            noGroup = true;
+
+                                        }
+
+                                    }
+                                    CASLogger.debug('Inside if block of criteria.group: noMtomGR.next(): FetchVersions.getCatalogProjects. ');
+
+                                }
+                                if (criteria.role) {
+                                    var role = criteria.role.split(",");
+                                    for (var j in role) {
+                                        var hasRole = new GlideRecord('sys_user_has_role');
+                                        hasRole.addQuery('role', role[j]);
+                                        hasRole.addQuery('user', gs.getUserID());
+                                        hasRole.query();
+                                        if (hasRole.next()) {
+                                            noRole = true;
+                                        }
+                                    }
+                                    CASLogger.debug('Inside if block of criteria.role: noMtomGR.next(): FetchVersions.getCatalogProjects. ');
+
+                                }
+                                CASLogger.debug('Inside while loop of noMtomGR.next(): FetchVersions.getCatalogProjects. ');
+
+                            }
+                            if (noUser == false && noGroup == false && noRole == false) {
+                                var input = {
+                                    "name": "",
+                                    "id": ""
+                                };
+                                input.name = grCatItem["sc_category"]["title"] + '';
+                                input.id = grCatItem["sc_category"]["project_id"] + '';
+								if(input.id != 'undefined' && input.id != undefined){
+                                inputdata.push(input);
+								}
+                                CASLogger.debug('Inside if block of noUser-noGroup-noRole FetchVersions.getCatalogProjects. ');
+                            }
+
+
+
+                        }
+
+
+
+
+
+                    }
+                    CASLogger.debug('Inside FetchVersions.getCatalogProjects:---inputdata: ' + JSON.stringify(inputdata));
+                    return JSON.stringify(inputdata);
+                } else {
+
+                    CASLogger.debug('Inside else block of FetchVersions.getCatalogProjects:---inputdata: ' + JSON.stringify(inputdata));
+                    return 'false';
+                }
+            }
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of FetchVersions.getCatalogProjects: Exception Block: catalogSysid: ' + catalogSysid + ' categoryId: ' + categoryId + ' inputdata: ' + JSON.stringify(inputdata) + ' criteria: ' + criteria);
+            CASLogger.error('Exception caught inside the FetchVersions.getCatalogProjects ' + e + ". Error found" + e.stack);
+        }
+    },
+	
+getVersions: function() {
+    try {
+        CASLogger.debug('Inside  FetchVersions.getVersions: Getting of versions. ');
+        var version;
+        var variables = '';
+        var catalogSysid = this.getParameter('sysparm_sys_id');
+        var RITMVersion = this.getParameter('sysparm_RITMVersion');
+        if (RITMVersion == "undefined") {
+            RITMVersion = '';
+        }
+        CASLogger.debug('Inside FetchVersions.getVersions: CatalogSysid: ' + catalogSysid + 'RITMVersion: ' + RITMVersion);
+
+        var grCatItem = new GlideRecord('x_vmw_cloudservice_cas_catalog_items');
+        grCatItem.addQuery('sys_id', catalogSysid);
+        grCatItem.query();
+
+        if (grCatItem.next()) {
+            version = grCatItem.versions;
+            var deletedVersion = grCatItem.u_deleted_version + '';
+            if (RITMVersion) {
+				var deletedList = deletedVersion.split(',');
+				var flag = 'false';
+				for(var i = 0; i < deletedList.length; i++){
+					if(deletedList[i]+'' == RITMVersion+''){
+						flag = 'true';
+						break;
+					}
+				}
+                if (flag == 'true') {
+                    var version1 = version.split(',');
+                    if (version1.length == 2) {
+                        var gr = new GlideRecord('item_option_new');
+                        gr.addQuery("cat_item", catalogSysid);
+                        gr.addQuery("x_vmw_cloudservice_versions", version);
+                        gr.query();
+                        while (gr.next()) {
+                            variables = variables + gr.name + ",";
+                        }
+                    }
+
+                    return 'false||' + variables;
+                } else {
+
+                    return "true||" + RITMVersion + ',';
+
+                }
+            } else {
+
+                CASLogger.debug('Inside if block of FetchVersions.getVersions:---version: ' + version + ' RITMVersion: ' + RITMVersion);
+                return "true||" + version.toString();
+            }
+
+        } else {
+            return 'false||' + '';
+        }
+    } catch (e) {
+        CASLogger.debug('Inside Catch Block of FetchVersions.getVersions: Exception Block: version: ' + version + ' catalogSysid: ' + catalogSysid + ' RITMVersion: ' + RITMVersion);
+        CASLogger.error("Exception caught Inside FetchVersions.getVersions " + e + ". Error found" + e.stack);
+    }
+},	
+
+    /*	
+    Function Name :getDeployment
+    Comments: This function is used to display the Deployment name 
+    Updated On:01/07/2021
+    Updated By:Vinod
+    */
+
+    getDeployment: function() {
+        try {
+            CASLogger.debug('Inside  FetchVersions.getDeployment: Getting of deploymentName. ');
+            var version = this.getParameter('sysparm_version');
+			var rgx = new RegExp('[^a-zA-Z0-9]', 'g');
+            var deply;
+			if(version == '' || version == undefined || version =='undefined'){
+				deply = 'nameLIKEdeploymentName';
+			}else{
+				var versionEncrypt = version.replace(rgx, ' ').trim().replaceAll(' ', '_');
+				deply = 'name=deploymentName' + '__' + versionEncrypt;
+			}
+            
+            var catalogSysidd = this.getParameter('sysparm_sys_id');
+            CASLogger.debug('Inside FetchVersions.getDeployment: catalogSysidd: ' + catalogSysidd);
+            var grCatItemm = new GlideRecord('item_option_new');
+            grCatItemm.addQuery('cat_item', catalogSysidd);
+            grCatItemm.addEncodedQuery(deply);
+            grCatItemm.query();
+
+            if (grCatItemm.next()) {
+                //CASLogger.debug('Inside While Block of FetchVersions.getDeployment');
+                return 'correct';
+            }else{
+			    //CASLogger.debug('Inside Else Block of FetchVersions.getDeployment');
+				return 'wrong';
+			}
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of FetchVersions.getDeployment: Exception Block: version: ' + version + ' catalogSysidd: ' + catalogSysidd);
+            CASLogger.error("Exception caught Inside FetchVersions.getDeployment " + e + ". Error found" + e.stack);
+        }
+    },
+
+
+
+    getFieldProperties: function() {
+        try {
+
+            this.appUtil = new CASAppUtil();
+            var catalogSysid = this.getParameter('sysparm_sys_id');
+            CASLogger.debug('Inside FetchVersions.getFieldProperties: CatalogSysid: ' + catalogSysid);
+            var readOnlyFields = [];
+            var hiddenFields = [];
+            var variables = new GlideRecord(this.appUtil.configuration.table.variable);
+            variables.addQuery('cat_item', catalogSysid);
+            //variables.addQuery('name','IN',fieldsArray.toString());
+            variables.query();
+            if (variables.hasNext()) {
+                while (variables.next()) {
+                    if (variables.x_vmw_cloudservice_field_readonly == 'true')
+                        readOnlyFields.push(variables.name.toString());
+                    if (variables.x_vmw_cloudservice_field_visibility == 'false') {
+                        hiddenFields.push(variables.name.toString());
+                    }
+                    //CASLogger.debug('Inside while loop of FetchVersions.getFieldProperties:');
+                }
+                var result = readOnlyFields.toString() + '||' + hiddenFields.toString();
+                CASLogger.debug('Inside FetchVersions.getFieldProperties:---result: ' + result);
+                return result;
+            } else {
+                CASLogger.debug('Inside else block of FetchVersions.getFieldProperties: catalogSysid: ' + catalogSysid);
+                return 'false';
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of FetchVersions.getFieldProperties: Exception Block: catalogSysid: ' + catalogSysid + ' readOnlyFields: ' + readOnlyFields + ' hiddenFields: ' + hiddenFields + ' result: ' + result);
+            CASLogger.error("Exception caught Inside FetchVersions.getFieldProperties " + e + ". Error found" + e.stack);
+        }
+    },
+
+    getAllFields: function() {
+        try {
+            this.appUtil = new CASAppUtil();
+            var catalogSysid = this.getParameter('sysparm_sys_id');
+            CASLogger.debug('Inside FetchVersions.getAllFields: CatalogSysid: ' + catalogSysid);
+            var readOnlyFields = [];
+            var hiddenFields = [];
+            var variableSetSysID = gs.getProperty(this.appUtil.configuration.properties.variableSetSysID);
+            CASLogger.debug('Inside FetchVersions.getAllFields: variableSetSysID: ' + variableSetSysID);
+            var grCatVar = new GlideRecord(this.appUtil.configuration.table.variable);
+            grCatVar.addQuery('variable_set', variableSetSysID);
+            grCatVar.query();
+            while (grCatVar.next()) {
+                readOnlyFields.push(grCatVar.name.toString());
+                if (grCatVar.x_vmw_cloudservice_field_visibility == 'false') {
+                    hiddenFields.push(grCatVar.name.toString());
+                }
+                //CASLogger.debug('Inside while loop of grCatVar.next(): FetchVersions.getAllFields:');
+            }
+            var variables = new GlideRecord(this.appUtil.configuration.table.variable);
+            variables.addQuery('cat_item', catalogSysid);
+            variables.query();
+            while (variables.next()) {
+                readOnlyFields.push(variables.name.toString());
+                if (variables.x_vmw_cloudservice_field_visibility == 'false') {
+                    hiddenFields.push(variables.name.toString());
+                }
+                //CASLogger.debug('Inside while loop of variables.next(): FetchVersions.getAllFields:');
+            }
+			var setGr = new GlideRecord(this.appUtil.configuration.table.variableSet);
+			var app_scope = gs.getProperty(this.appUtil.configuration.properties.applicationSysID);
+			setGr.addEncodedQuery('sc_cat_item='+ catalogSysid + '^variable_set.sys_id!='+ variableSetSysID);
+			setGr.query();
+			while(setGr.next()){
+				readOnlyFields.push(setGr.variable_set.internal_name.toString());
+				if(setGr.variable_set.description == 'false' && setGr.variable_set.sys_scope == app_scope){
+					hiddenFields.push(setGr.variable_set.internal_name.toString());
+				}
+			}
+            var result = readOnlyFields.toString() + '||' + hiddenFields.toString();
+            CASLogger.debug('Inside FetchVersions.getAllFields: Result is ' + result);
+            return result;
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of FetchVersions.getAllFields: Exception Block: catalogSysid: ' + catalogSysid + ' readOnlyFields: ' + readOnlyFields + ' hiddenFields: ' + hiddenFields + ' variableSetSysID: ' + variableSetSysID + ' result: ' + result);
+            CASLogger.error("Exception caught Inside FetchVersions.getAllFields " + e + ". Error found" + e.stack);
+        }
+    },
+
+
+  
+	
+				/*	
+		Function Name :getVersionsFields
+		Comments:  We are using this function to get catalog variables based on version
+		Updated On:21/02/2022
+		Updated By: Shivam Goyal
+		Update Comments : Added a new condition for Custom Fields
+		*/
+
+     getVersionsFields: function() {
+        try {
+            CASLogger.debug('Inside  FetchVersions.getVersionsFields: Getting Catalog variable based on versions. ');
+
+            this.appUtil = new CASAppUtil();
+            var catalogSysid = this.getParameter('sysparm_sys_id');
+            var version = this.getParameter('sysparm_version') + '';
+            var rgx = new RegExp('[^a-zA-Z0-9]', 'g');
+            var versionEncrypt = version.replace(rgx, ' ').trim().replaceAll(' ', '_');
+            CASLogger.debug('Inside FetchVersions.getVersionsFields: CatalogSysid: ' + catalogSysid + ' version: ' + version + ' versionEncrypt: ' + versionEncrypt);
+            var fieldsArray = [];
+            var mandatoryFields = [];
+            var hiddenFields = [];
+            var customArray = [];
+
+            var variable = new GlideRecord(this.appUtil.configuration.table.variable);
+            variable.addQuery('cat_item', catalogSysid);
+            variable.addQuery('visible_standalone', true);
+            variable.query();
+            while (variable.next()) {
+
+                if (variable.name.endsWith('__' + versionEncrypt) || (variable.order > '10000' && variable.order < '10101')) {
+
+                    if (variable.name.endsWith('__' + versionEncrypt)) {
+                        fieldsArray.push(variable.name.toString());
+                    } else {
+                        customArray.push(variable.name.toString());
+                    }
+                    if (variable.mandatory) {
+                        mandatoryFields.push(variable.name.toString());
+                    }
+                    if (variable.x_vmw_cloudservice_field_visibility == 'false') {
+                        hiddenFields.push(variable.name.toString());
+                    }
+                } else {
+                    hiddenFields.push(variable.name.toString());
+                }
+            }
+			
+            if (customArray.length > 2) {
+                fieldsArray.push(customArray);
+            } else {
+                hiddenFields.push(customArray);
+            }
+			var default_varset =  gs.getProperty(this.appUtil.configuration.properties.variableSetSysID);
+			var app_scope = gs.getProperty(this.appUtil.configuration.properties.applicationSysID);
+			var io_varset = new GlideRecord(this.appUtil.configuration.table.variableSet);
+			io_varset.addQuery('sc_cat_item', catalogSysid);
+			io_varset.addQuery('variable_set.sys_id', '!=', default_varset);
+			io_varset.query();
+			while(io_varset.next()){
+					if (io_varset.variable_set.internal_name.endsWith('_mrvs' + '_' + versionEncrypt) || io_varset.variable_set.sys_scope == 'global') {
+						fieldsArray.push(io_varset.variable_set.internal_name);
+						if(io_varset.variable_set.description == 'false' && io_varset.variable_set.sys_scope == app_scope){
+							hiddenFields.push(io_varset.variable_set.internal_name);
+						}
+					}else{
+						hiddenFields.push(io_varset.variable_set.internal_name);
+					}
+			}
+			
+           
+            CASLogger.debug('Inside FetchVersions.getVersionsFields: fieldsArray: ' + fieldsArray + ' mandatoryFields: ' + mandatoryFields + ' hiddenFields: ' + hiddenFields);
+            return fieldsArray.toString() + '||' + mandatoryFields.toString() + '||' + hiddenFields.toString();
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of FetchVersions.getVersionsFields: Exception Block: catalogSysid: ' + catalogSysid + ' version: ' + version + ' fieldsArray: ' + fieldsArray + ' mandatoryFields: ' + mandatoryFields + ' hiddenFields: ' + hiddenFields);
+            CASLogger.error("Exception caught Inside FetchVersions.getVersionsFields " + e + ". Error found" + e.stack);
+            return 'false';
+        }
+    },
+
+		/*	
+		Function Name :customContainerHide
+		Comments:  We are using this function to hide empty custom container on onload.
+		Created On:21/02/2022
+		Created By: Shivam Goyal
+		*/
+    customContainerHide: function() {
+      try {
+          CASLogger.debug('Inside the FetchVersions.customContainerHide. ');
+          this.appUtil = new CASAppUtil();
+          var catalogSysid = this.getParameter('sysparm_sys_id');
+          var fieldsArray = [];
+          var hiddenFields = [];
+
+          var variable = new GlideRecord(this.appUtil.configuration.table.variable);
+          variable.addQuery('cat_item', catalogSysid);
+          variable.addQuery('orderBETWEEN10001@10100');
+          variable.query();
+          var count = variable.getRowCount();
+
+          while (variable.next()) {
+              if (count > 2) {
+                  fieldsArray.push(variable.name.toString());
+              } else {
+                  hiddenFields.push(variable.name.toString());
+              }
+
+          }
+          CASLogger.debug('Inside FetchVersions.customContainerHide: fieldsArray: ' + fieldsArray + ' hiddenFields: ' + hiddenFields);
+
+          return fieldsArray.toString() + '||' + hiddenFields.toString();
+      } catch (e) {
+          CASLogger.error('Inside Catch Block of FetchVersions.customContainerHide: Exception Block: catalogSysid: ' + catalogSysid);
+          CASLogger.error("Exception caught Inside FetchVersions.getHiddenContainers " + e + ". Error found" + e.stack);
+      }
+  },
+
+getMacroFields: function() {
+    try {
+        this.appUtil = new CASAppUtil();
+        var catalogSysid = this.getParameter('sysparm_sys_id');
+        CASLogger.debug('Inside FetchVersions.getMacroFields: CatalogSysid: ' + catalogSysid);
+        var macroFields = [];
+        var variables = new GlideRecord(this.appUtil.configuration.table.variable);
+        variables.addQuery('cat_item', catalogSysid);
+        variables.addQuery('type', '=', 17);
+        variables.query();
+        if (variables.hasNext()) {
+            while (variables.next()) {
+                macroFields.push(variables.name.toString());
+            }
+            var result = macroFields.toString();
+            CASLogger.debug('Inside FetchVersions.getMacroFields: Result is ' + result);
+            return result;
+        } else {
+            CASLogger.debug('Inside else block of FetchVersions.getMacroFields: CatalogSysid: ' + catalogSysid);
+            return 'false';
+        }
+    } catch (e) {
+        CASLogger.debug('Inside Catch Block of FetchVersions.getMacroFields: Exception Block: catalogSysid: ' + catalogSysid + ' macroFields: ' + macroFields + ' result: ' + result);
+        CASLogger.error("Exception caught Inside FetchVersions.getMacroFields " + e + ". Error found" + e.stack);
+    }
+},
+
+getDatagridFields: function() {
+    try {
+        this.appUtil = new CASAppUtil();
+        var catalogSysid = this.getParameter('sysparm_sys_id');
+        CASLogger.debug('Inside FetchVersions.getDatagridFields: CatalogSysid: ' + catalogSysid);
+        var datagridFields = [];
+        var variables = new GlideRecord(this.appUtil.configuration.table.variable);
+        variables.addQuery('cat_item', catalogSysid);
+        variables.query();
+        if (variables.hasNext()) {
+            while (variables.next()) {
+                if (variables.x_vmw_cloudservice_datatype == 'DataGrid' || variables.x_vmw_cloudservice_datatype == 'Duallist' || variables.x_vmw_cloudservice_datatype == 'Multiselect' || variables.x_vmw_cloudservice_datatype == 'ValuePicker') {
+                    datagridFields.push(variables.name.toString());
+                }
+            }
+            var result = datagridFields.toString();
+            CASLogger.debug('Inside FetchVersions.getDatagridFields: Result is ' + result);
+            return result;
+        } else {
+            return 'false';
+        }
+    } catch (e) {
+        CASLogger.debug('Inside Catch Block of FetchVersions.getDatagridFields: Exception Block: catalogSysid: ' + catalogSysid + ' datagridFields: ' + datagridFields + ' result: ' + result);
+        CASLogger.error("Exception caught Inside FetchVersions.getDatagridFields " + e + ". Error found" + e.stack);
+    }
+},
+
+isUserAuthorized: function() {
+    try {
+        this.appUtil = new CASAppUtil();
+        var userSysid = this.getParameter('sysparm_userID');
+        //CASLogger.debug('Inside FetchVersions.isUserAuthorized: UserSysid: '+userSysid);
+        var endpoint = new GlideRecord(this.appUtil.configuration.table.register_cas);
+        endpoint.addQuery('use_oauth', true);
+        endpoint.addQuery('active', true);
+        endpoint.query();
+        if (endpoint.hasNext()) {
+            if (endpoint.next()) {
+                var token = new GlideRecord(this.appUtil.configuration.table.oauthToken);
+                token.addQuery('endpoint', endpoint.sys_id + '');
+                token.addQuery('user', userSysid);
+                token.addQuery('active', true);
+                token.query();
+                //CASLogger.debug('Inside if block of endpoint.hasNext(): FetchVersions.isUserAuthorized:');
+                if (token.hasNext()) {
+                    var isActive = this.isTokenActive(userSysid, endpoint.sys_id + '');
+                    //CASLogger.debug('Inside if block of token.hasNext(): FetchVersions.isUserAuthorized:---isActive: ' + isActive);
+                    if (isActive == 'true') {
+                        return 'true';
+                    } else {
+                        return gs.getProperty('glide.servlet.uri') + "x_vmw_cloudservice_oauth_authorize.do?endpoint=" + endpoint.sys_id;
+                    }
+                } else {
+                    return gs.getProperty('glide.servlet.uri') + "x_vmw_cloudservice_oauth_authorize.do?endpoint=" + endpoint.sys_id;
+                }
+            }
+        } else {
+            return 'true';
+        }
+    } catch (e) {
+        CASLogger.debug('Inside Catch Block of FetchVersions.isUserAuthorized: Exception Block: userSysid: ' + userSysid);
+        CASLogger.error("Exception caught Inside FetchVersions.isUserAuthorized " + e + ". Error found" + e.stack);
+        return 'true';
+    }
+},
+
+isTokenActive: function(user, endpoint) {
+    try {
+        CASLogger.debug('Inside the FetchVersions.isTokenActive. ');
+        var oAuthToken = new GlideRecord(this.appUtil.configuration.table.oauthToken);
+        oAuthToken.addQuery('user', user + '');
+        oAuthToken.addQuery('endpoint', endpoint + '');
+        oAuthToken.addQuery('type', 'refresh_token');
+        oAuthToken.query();
+        if (oAuthToken.next()) {
+            var url = "https://console.cloud.vmware.com" + this.appUtil.configuration.api.validateOauthToken;
+            var body = "token=" + oAuthToken.token_received.getDecryptedValue();
+            var base64Auth = gs.base64Encode(oAuthToken.endpoint.client_id + ':' + oAuthToken.endpoint.client_secret.getDecryptedValue());
+            var response = this.appUtil.makeApiCall(url, 'post', body, '', "application/json", "application/x-www-form-urlencoded", 'Basic ' + base64Auth);
+            CASLogger.debug('Inside FetchVersions.isTokenActive:---response: ' + response);
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(FetchVersions.isTokenActive):" + url);
+                    } else {
+                        CASLogger.error('REST call error found inside FetchVersions.isTokenActive : ' + response.getErrorMessage());
+                    }
+                }
+            } else {
+                var responseBody = response.getBody();
+				var res = this.daoUtil.checkNull(responseBody);
+				if(res == false || res == 'false'){
+					CASLogger.error('Inside null/empty if block of FetchVersions.isTokenActive:responseBody: ' + responseBody);
+					return;
+				}else{
+                var respBody = this.appUtil.parse(responseBody);
+                var isActive = respBody.active;
+                CASLogger.debug('Inside FetchVersions.isTokenActive: responseBody: ' + responseBody + ' isActive: ' + isActive);
+                return isActive + '';
+            }
+			}
+        }
+    } catch (e) {
+        CASLogger.error('Inside Catch Block of FetchVersions.isTokenActive: Exception Block: responseBody: ' + responseBody + ' isActive: ' + isActive);
+        CASLogger.error("Exception caught inside FetchVersions.isTokenActive " + e + ". Error found" + e.stack);
+    }
+},
+
+getHiddenContainers: function() {
+    try {
+
+        this.appUtil = new CASAppUtil();
+        var catalogSysid = this.getParameter('sysparm_sys_id');
+        CASLogger.debug('Inside FetchVersions.getHiddenContainers: CatalogSysid: ' + catalogSysid);
+        var containerArr = [];
+        var previous = '';
+        var current = '';
+        var variables = new GlideRecord(this.appUtil.configuration.table.variable);
+        variables.addQuery('cat_item', catalogSysid);
+        variables.orderBy('order');
+        variables.query();
+        if (variables.hasNext()) {
+            while (variables.next()) {
+                current = variables.name;
+
+                if (current == (previous + '_end') && current.split('__')[0] == 'page_general') {
+                    containerArr.push(previous);
+                }
+                //CASLogger.debug('Inside while block of FetchVersions.getHiddenContainers:');
+                previous = current + '';
+            }
+            CASLogger.debug('Inside if block of  FetchVersions.getHiddenContainers:---containerArr: ' + containerArr);
+            return JSON.stringify(containerArr);
+        } else {
+            CASLogger.debug('Inside if block of  FetchVersions.getHiddenContainers:---:catalogSysid' + catalogSysid);
+            return 'false';
+        }
+
+    } catch (e) {
+        CASLogger.error('Inside Catch Block of FetchVersions.getHiddenContainers: Exception Block: catalogSysid: ' + catalogSysid + ' containerArr: ' + containerArr + ' previous: ' + previous + ' current: ' + current);
+        CASLogger.error("Exception caught Inside FetchVersions.getHiddenContainers " + e + ". Error found" + e.stack);
+    }
+},
+
+/*	
+Function Name :getDataGridDefaultValue
+Comments: This function is used to return datagrid default value.
+Updated On:10/08/2021
+Updated By:Prateek
+Update Comments :NA
+*/
+getDataGridDefaultValue: function() {
+    try {
+
+        this.appUtil = new CASAppUtil();
+        var defaultValue = {};
+        var macroSysid = this.getParameter('sysparm_sys_id');
+        CASLogger.debug('Inside FetchVersions.getDataGridDefaultValue: Value of macroSysid: ' + macroSysid);
+        var variable = new GlideRecord(this.appUtil.configuration.table.variable);
+        variable.addQuery('sys_id', macroSysid);
+        variable.query();
+        if (variable.hasNext()) {
+            if (variable.next()) {
+                defaultValue = variable.default_value;
+            }
+            CASLogger.debug('Inside FetchVersions.getDataGridDefaultValue:---defaultValue: ' + defaultValue);
+            return defaultValue;
+        } else {
+            CASLogger.debug('Inside Inside FetchVersions.getDataGridDefaultValue:---macroSysid: ' + macroSysid);
+            return 'false';
+        }
+
+    } catch (e) {
+        CASLogger.error('Inside Catch Block of FetchVersions.getDataGridDefaultValue: Exception Block: defaultValue: ' + defaultValue + ' macroSysid: ' + macroSysid);
+        CASLogger.error("Exception caught Inside FetchVersions.getDataGridDefaultValue " + e + ". Error found" + e.stack);
+    }
+},
+
+type: 'FetchVersions'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>manish.admin</sys_created_by>
+        <sys_created_on>2020-07-10 11:43:17</sys_created_on>
+        <sys_id>056a6dafdbfd5010acc285184b961971</sys_id>
+        <sys_mod_count>329</sys_mod_count>
+        <sys_name>FetchVersions</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_056a6dafdbfd5010acc285184b961971</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-11-21 07:49:31</sys_updated_on>
+    </sys_script_include>
+</record_update>
