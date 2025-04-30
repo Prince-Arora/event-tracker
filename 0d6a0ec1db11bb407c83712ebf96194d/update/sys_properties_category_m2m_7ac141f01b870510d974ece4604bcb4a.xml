@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_properties_category_m2m">
+    <sys_properties_category_m2m action="INSERT_OR_UPDATE">
+        <category display_value="system property">b364b9231be60110d974ece4604bcbec</category>
+        <order>200</order>
+        <property display_value="x_vmw_cloudservice.sn.casqueue.deletion.duration" name="x_vmw_cloudservice.sn.casqueue.deletion.duration">75b997e01bdf330058ba21b6bc4bcb6e</property>
+        <sys_class_name>sys_properties_category_m2m</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2022-04-21 11:34:19</sys_created_on>
+        <sys_id>7ac141f01b870510d974ece4604bcb4a</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_vmw_cloudservice.vrasn.casqueue.deletion.duration.system property</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_properties_category_m2m_7ac141f01b870510d974ece4604bcb4a</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2022-04-21 11:34:19</sys_updated_on>
+    </sys_properties_category_m2m>
+</record_update>

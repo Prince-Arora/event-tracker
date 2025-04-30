@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="io_set_item">
+    <io_set_item action="INSERT_OR_UPDATE">
+        <order>85</order>
+        <sc_cat_item display_value="TC_custom_form_13">8810844a83786210c549bfc6feaad397</sc_cat_item>
+        <sys_class_name>io_set_item</sys_class_name>
+        <sys_created_by>system</sys_created_by>
+        <sys_created_on>2025-04-10 08:45:25</sys_created_on>
+        <sys_id>9b104c8a83786210c549bfc6feaad3a2</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>Data Grid mand.TC_custom_form_13</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>io_set_item_9b104c8a83786210c549bfc6feaad3a2</sys_update_name>
+        <sys_updated_by>system</sys_updated_by>
+        <sys_updated_on>2025-04-10 08:45:26</sys_updated_on>
+        <variable_set display_value="Data Grid mand">17104c8a83786210c549bfc6feaad3a0</variable_set>
+    </io_set_item>
+</record_update>

@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.OAuthUtil</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description/>
+        <name>OAuthUtil</name>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2020-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var OAuthUtil = Class.create();
+OAuthUtil.prototype = {
+    initialize: function() {
+        this.appUtil = new CASAppUtil();
+    },
+
+   processAuthCode: function(auth_code, state) {
+        try {
+            CASLogger.debug('Inside the OAuthUtil.processAuthCode: State: ' + state);
+            var token_url = '';
+            var redirect_url = '';
+            var base64Auth = '';
+            var client_id = '';
+            var client_secret = '';
+
+            var userProfile = new GlideRecord(this.appUtil.configuration.table.oauthToken);
+            userProfile.addQuery('state', state);
+            userProfile.addQuery('user', gs.getUserID());
+            userProfile.query();
+            if (userProfile.next()) {
+                token_url = userProfile.endpoint.token_url;
+                redirect_url = userProfile.endpoint.redirect_url;
+                client_secret = userProfile.endpoint.client_secret.getDecryptedValue();
+                client_id = userProfile.endpoint.client_id;
+
+                var body = "grant_type=authorization_code&code=" + auth_code + "&redirect_uri=" + redirect_url;
+				CASLogger.debug('Inside OAuthUtil.processAuthCode: Body '+body + ' client_id: ' + client_id);
+                base64Auth = gs.base64Encode(client_id + ':' + client_secret);
+                var response = this.appUtil.makeApiCall(token_url, 'post', body, '', "application/json", "application/x-www-form-urlencoded", 'Basic ' + base64Auth);
+				CASLogger.debug('Inside OAuthUtil.processAuthCode:---response: ' + response);
+                if (response.haveError()) {
+                    var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                    for (var s = 0; s < propertyStatus.length; s++) {
+                        if (propertyStatus[s] == response.getStatusCode()) {
+                            CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(OAuthUtil.processAuthCode):"+token_url);
+                        } else {
+                            CASLogger.error('REST call error found inside OAuthUtil.processAuthCode : ' + response.getErrorMessage());
+                        }
+                    }
+                    return false;
+                } else {
+                    var responseBody = response.getBody();
+					CASLogger.debug('Inside Else OAuthUtil.processAuthCode: responseBody '+responseBody);
+                    if (this.updateToken(response, state))
+                        return true;
+                    else
+                        return false;
+                }
+            } else {
+                return false;
+            }
+        } catch (ex) {
+			CASLogger.debug('Inside Catch BLock of OAuthUtil.processAuthCode: Exception Block: client_id: '+client_id+' responseBody: '+responseBody);
+            CASLogger.error('Exception caught inside the OAuthUtil.processAuthCode ' + ex + ". Error found" + ex.stack);
+            return false;
+        }
+    },
+
+    updateToken: function(response, state) {
+        try {
+            var responseBody = response.getBody();
+			var res = this.daoUtil.checkNull(responseBody);
+					if(res == false || res == 'false'){
+						CASLogger.error('Inside null/empty if block of OAuthUtil.manageTokens :responseBody: ' + responseBody);
+						return false;
+					}else{
+            var respBody = this.appUtil.parse(responseBody);
+			CASLogger.debug('Inside OAuthUtil.updateToken: responseBody: '+responseBody + ' state: ' + state);
+            var refreshToken = respBody.refresh_token;
+
+            var tokenGR = new GlideRecord(this.appUtil.configuration.table.oauthToken);
+            tokenGR.addQuery('user', gs.getUserID());
+            tokenGR.addQuery('state', state + '');
+            tokenGR.query();
+            if (tokenGR.next()) {
+                tokenGR.token_received = refreshToken;
+                tokenGR.type = 'refresh_token';
+                tokenGR.user = gs.getUserID();
+                tokenGR.state = state.toString();
+                tokenGR.active = true;
+                tokenGR.update();
+				CASLogger.debug('Inside if block of OAuthUtil.updateToken. ');
+                return true;
+            } else {
+				CASLogger.debug('Inside else block of OAuthUtil.updateToken. ');
+                return false;
+            }
+			}
+        } catch (e) {
+			CASLogger.debug('Inside Catch BLock of OAuthUtil.updateToken: Exception Block: responseBody: '+responseBody + ' state: ' + state);
+            CASLogger.error('Exception caught inside the CASDaoUtil.updateToken ' + e + ". Error found" + e.stack);
+            return false;
+        }
+    },
+
+    getOAuthStateCode: function(endpoint) {
+        try {
+			CASLogger.debug('Inside OAuthUtil.getOAuthStateCode: endpoint: '+ endpoint);
+            var userID = gs.getUserID();
+            var state = '';
+            var result = {};
+            var vra = new GlideRecord(this.appUtil.configuration.table.register_cas);
+            vra.get(endpoint + '');
+
+            result = {
+                "state": state + '',
+                "client_id": vra.client_id + '',
+                "auth_url": vra.authorization_url + '',
+                "redirct_url": vra.redirect_url + '',
+                "orgID": vra.organization_id + ''
+            };
+			
+
+            var tokens = new GlideRecord(this.appUtil.configuration.table.oauthToken);
+            tokens.addQuery('user', userID);
+            tokens.addQuery('endpoint', endpoint + '');
+            tokens.query();
+            if (tokens.hasNext()) {
+                if (tokens.next()) {
+                    state = tokens.state;
+					CASLogger.debug('Inside If Block of OAuthUtil.getOAuthStateCode: State: '+state);
+                }
+                result.state = state + '';
+				CASLogger.debug('Inside if block of OAuthUtil.getOAuthStateCode: Result: '+result);
+                return JSON.stringify(result);
+            } else {
+                state = Math.floor(Math.random() * (99999999999 - 1000 + 1)) + 1000;
+                tokens.initialize();
+                tokens.endpoint = endpoint + '';
+                tokens.user = userID;
+                tokens.state = state + '';
+                tokens.type = 'refresh_token';
+                tokens.insert();
+
+                result.state = state + '';
+				CASLogger.debug('Inside Else Block of OAuthUtil.getOAuthStateCode: Result: '+result);
+                return JSON.stringify(result);
+            }
+        } catch (e) {
+			CASLogger.debug('Inside Catch BLock of OAuthUtil.getOAuthStateCode: Exception Block: endpoint: ' + endpoint + ' result: '+result);
+            CASLogger.error("Exception caught inside EndpointRegister.getOAuthStateCode " + e + ". Error found" + e.stack);
+            return false;
+        }
+    },
+
+    manageTokens: function() {
+        try {
+			CASLogger.debug('Inside OAuthUtil.manageTokens. ');
+            var tokens = new GlideRecord(this.appUtil.configuration.table.oauthToken);
+            tokens.addQuery('active', true);
+            tokens.query();
+            while (tokens.next()) {
+                var url = "https://console.cloud.vmware.com" + this.appUtil.configuration.api.validateOauthToken;
+                var body = "token=" + tokens.token_received.getDecryptedValue();
+                var base64Auth = gs.base64Encode(tokens.endpoint.client_id + ':' + tokens.endpoint.client_secret.getDecryptedValue());
+                var response = this.appUtil.makeApiCall(url, 'post', body, '', "application/json", "application/x-www-form-urlencoded", 'Basic ' + base64Auth);
+				//CASLogger.debug('Inside while loop of OAuthUtil.manageTokens:---response: ' + response);
+                if (response.haveError()) {
+                    var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                    for (var s = 0; s < propertyStatus.length; s++) {
+                        if (propertyStatus[s] == response.getStatusCode()) {
+                            CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(FetchVersions.manageTokens):"+url);
+                        } else {
+                            CASLogger.error('REST call error found inside FetchVersions.manageTokens : ' + response.getErrorMessage());
+                        }
+                    }
+
+                } else {
+                    var responseBody = response.getBody();
+					var res = this.daoUtil.checkNull(responseBody);
+					if(res == false || res == 'false'){
+						CASLogger.error('Inside null/empty if block of OAuthUtil.manageTokens :responseBody: ' + responseBody);
+						return;
+					}else{
+                    var respBody = this.appUtil.parse(responseBody);
+                    var isActive = respBody.active;
+					CASLogger.debug('Inside else block of OAuthUtil.manageTokens: responseBody: '+responseBody + ' isActive: ' + isActive);
+                    tokens.active = isActive;
+                    tokens.update();
+                }
+				}
+            }
+        } catch (e) {
+			CASLogger.debug('Inside Catch BLock of OAuthUtil.manageTokens: Exception Block: responseBody: '+responseBody+' isActive: '+isActive);
+            CASLogger.error("Exception caught inside OAuthUtil.manageTokens " + e + ". Error found" + e.stack);
+        }
+    },
+
+    type: 'OAuthUtil'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2020-11-27 12:07:18</sys_created_on>
+        <sys_id>906eeae01bf8a0109fb21067bc4bcbd3</sys_id>
+        <sys_mod_count>74</sys_mod_count>
+        <sys_name>OAuthUtil</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_906eeae01bf8a0109fb21067bc4bcbd3</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 05:32:00</sys_updated_on>
+    </sys_script_include>
+</record_update>

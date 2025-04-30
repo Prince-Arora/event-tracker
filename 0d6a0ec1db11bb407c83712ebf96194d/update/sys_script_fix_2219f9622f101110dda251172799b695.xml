@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_fix">
+    <sys_script_fix action="INSERT_OR_UPDATE">
+        <before>false</before>
+        <description>This Fix Script is for VMware Aria Automation Plugin.&#13;
+&#13;
+Please uncomment the code before executing this fix script.&#13;
+&#13;
+This script will delete all the custom resource  day2 actions from the day-2 action table, and delete the custom resource day2 action catalog item "client scripts "</description>
+        <name>ITSM 8.10 upgrade script</name>
+        <record_for_rollback>false</record_for_rollback>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2022-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+/*var day2action = new GlideRecord('x_vmw_cloudservice_vra_cloud_actions');
+day2action.addEncodedQuery("action_idLIKEcustom");
+day2action.query();
+while (day2action.next()) {
+    var CatalogClientScript = new sn_sc.CatalogClientScript();
+    var clientScript = new GlideRecord('catalog_script_client');
+   clientScript.addEncodedQuery("cat_item="+day2action.catalog_item+''+"^descriptionSTARTSWITHx_vmw_clientScript^nameLIKEdependent");
+	clientScript.addQuery("description","STARTSWITH","x_vmw_clientScript");
+    clientScript.query();
+    while (clientScript.next()) {
+        CatalogClientScript.deleteRecord(clientScript.sys_id);
+    }
+    day2action.deleteRecord();
+}*/]]></script>
+        <sys_class_name>sys_script_fix</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2022-06-28 05:39:00</sys_created_on>
+        <sys_id>2219f9622f101110dda251172799b695</sys_id>
+        <sys_mod_count>15</sys_mod_count>
+        <sys_name>ITSM 8.10 upgrade script</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_fix_2219f9622f101110dda251172799b695</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-05-02 13:31:32</sys_updated_on>
+        <unloadable>false</unloadable>
+    </sys_script_fix>
+</record_update>

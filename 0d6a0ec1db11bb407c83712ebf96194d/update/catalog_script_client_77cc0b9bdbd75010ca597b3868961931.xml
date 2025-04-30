@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="catalog_script_client">
+    <catalog_script_client action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <applies_catalog>true</applies_catalog>
+        <applies_extended>false</applies_extended>
+        <applies_req_item>false</applies_req_item>
+        <applies_sc_task>false</applies_sc_task>
+        <applies_target_record>false</applies_target_record>
+        <applies_to>set</applies_to>
+        <cat_item/>
+        <cat_variable/>
+        <condition/>
+        <description/>
+        <field/>
+        <global>true</global>
+        <isolate_script>true</isolate_script>
+        <messages/>
+        <name>validateDeploymentForm</name>
+        <order/>
+        <published_ref/>
+        <script><![CDATA[/************************************************************
+ * Copyright (c) 2020-2023 VMware, Inc. All Rights Reserved.
+ * You may not use this product except in compliance with the License.
+ * This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+ *************************************************************/
+
+/*
+Function Name : onSubmit()
+Comments: This function will check for all the validations on deployment day2 action catalog form on submission.
+Updated On: 27 May 2021
+Updated By: Vaibahv
+Update Comments : Made changes in script as per response received in new api for regex validations.
+*/
+
+function onSubmit() {
+    var response1 = g_form.getValue('dp_schema');
+    var fieldsArr1 = JSON.parse(response1);
+    var schema = fieldsArr1.schema;
+    var version = fieldsArr1.versions;
+
+    if (schema == '') {
+        schema = '{"model":{ "layout" : { "pages" : [ { "id" : "page_general", "title" : "General", "sections" : [ ] } ] }, "schema" : { } }}';
+    }
+    var parsed = JSON.parse(schema);
+
+    if (parsed && parsed.model && parsed.model.schema) {
+        var properties = parsed.model.schema;
+        for (var key in properties) {
+            var rgx = new RegExp('[^a-zA-Z0-9]', 'g');
+            var name = key.replace(rgx, ' ').trim().replaceAll(' ', '_');
+            name = name + '__' + version;
+            if (properties[key]["constraints"]) {
+                if (properties[key]["constraints"]["min-value"]) {
+                    var minimum = g_form.getValue(name);
+                    if (properties[key]["type"]["dataType"] == "decimal" || properties[key]["type"]["dataType"] == "integer") {
+                        if (minimum < properties[key]["constraints"]["min-value"]) {
+                            alert('Minimum value for ' + properties[key]["label"] + ' should be ' + properties[key]["constraints"]["min-value"]);
+
+                            return false;
+                        }
+                    } else {
+                        if (minimum.length < properties[key]["constraints"]["min-value"]) {
+                            alert('Minimum field length for ' + properties[key]["label"] + ' should be ' + properties[key]["constraints"]["min-value"]);
+                            return false;
+                        }
+                    }
+
+                }
+                if (properties[key]["constraints"]["max-value"]) {
+                    var maximum = g_form.getValue(name);
+                    if (properties[key]["type"]["dataType"] == "decimal" || properties[key]["type"]["dataType"] == "integer") {
+                        if (maximum > properties[key]["constraints"]["max-value"]) {
+                            alert('Maximum value for ' + properties[key]["label"] + ' should be ' + properties[key]["constraints"]["max-value"]);
+
+                            return false;
+                        }
+                    } else {
+                        if (maximum.length > properties[key]["constraints"]["max-value"]) {
+                            alert('Maximum field length for ' + properties[key]["label"] + ' should be ' + properties[key]["constraints"]["max-value"]);
+                            return false;
+                        }
+                    }
+
+                }
+
+                if (properties[key]["constraints"]["pattern"]) {
+                    var fieldPattern = g_form.getValue(name);
+                    var Pattern = new RegExp(properties[key]["constraints"]["pattern"].value);
+                    if (!Pattern.test(fieldPattern)) {
+                        alert(properties[key]["label"] + ' : Invalid Format! ' + properties[key]["constraints"]["pattern"].message);
+                        g_form.clearValue(name);
+                        return false;
+                    }
+                }
+
+                if (key == 'Lease Expiration Date' && properties[key]["type"]["dataType"] == "dateTime") {
+                    var value = g_form.getValue(name);
+                    if (new Date(value) < new Date()) {
+                        alert('Input date is earlier than the minimum allowed.');
+
+                        return false;
+                    }
+                }
+            }
+
+        }
+    }
+
+}]]></script>
+        <sys_class_name>catalog_script_client</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2020-09-22 14:03:14</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>77cc0b9bdbd75010ca597b3868961931</sys_id>
+        <sys_mod_count>76</sys_mod_count>
+        <sys_name>validateDeploymentForm</sys_name>
+        <sys_overrides/>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>catalog_script_client_77cc0b9bdbd75010ca597b3868961931</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-01-03 12:18:19</sys_updated_on>
+        <table/>
+        <type>onSubmit</type>
+        <ui_type>10</ui_type>
+        <va_supported>true</va_supported>
+        <variable_set display_value="Deployment Default Variables">e9e7bd89db935010ca597b3868961900</variable_set>
+        <view/>
+    </catalog_script_client>
+</record_update>

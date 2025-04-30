@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_script">
+    <sys_ui_script action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <description>/************************************************************&#13;
+* Copyright (c) 2023 VMware, Inc. All Rights Reserved.&#13;
+* You may not use this product except in compliance with the License.&#13;
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.&#13;
+*************************************************************/</description>
+        <global>false</global>
+        <ignore_in_now_experience>false</ignore_in_now_experience>
+        <name>x_vmw_cloudservice.upfront_price</name>
+        <script><![CDATA[var upfront_price = Class.create();
+
+function bodyTemplate() {
+
+    var deferred1 = new jQuery.Deferred();
+    var deferred2 = new jQuery.Deferred();
+
+    var data1, data2;
+    var input = [];
+    var input1 = {};
+    var store_template = [];
+    var store_catalogBody = [];
+    var variableString = '';
+    var projectId;
+    var version = g_form.getValue('u_version');
+    var cat_item = g_form.getValue('cat_item');
+    var catItemSysid = '';
+    var parsedTemplate;
+    if (cat_item == '' || cat_item == undefined) {
+        catItemSysid = g_form.getUniqueValue();
+    } else {
+        catItemSysid = cat_item;
+    }
+    var projectIdTest = g_form.getValue('u_project');
+
+
+    var gAjax = new GlideAjax('x_vmw_cloudservice.CSClientScriptBridge');
+    gAjax.addParam('sysparm_name', 'priceCatalogBody');
+    gAjax.addParam('sysparm_sys_id', catItemSysid);
+    gAjax.addParam('sysparm_version', version);
+    gAjax.getXMLAnswer(callBack);
+
+    function callBack(response) {
+        if (response != 'false') {
+
+            var parsedRes = JSON.parse(response);
+
+            var j = 0;
+            for (var i = 0; i < (parsedRes.variables.length); i++) {
+                var name = parsedRes.variables[i].org;
+                if (g_form.getValue[parsedRes.variables[i].name] != '') {
+                    input.push(name);
+                    input.push('');
+                }
+            }
+
+            var jsonObj = {};
+            for (var i = 0; i < input.length; i = i + 2) {
+                jsonObj[input[i]] = input[i + 1] + '';
+            }
+			
+            var inputjson = JSON.stringify(jsonObj);
+            var inputjson1 = JSON.parse(inputjson);
+            var template = '{"deploymentName": "", "inputs": {},"projectId": "", "reason": ""}';
+            parsedTemplate = JSON.parse(template);
+            parsedTemplate.inputs = inputjson1;
+
+            var hasVersion = false;
+            if (!((g_form.getValue('u_version')) == '' || (g_form.getValue('u_version')) == 'null' || (g_form.getValue('u_version')) == 'undefined')) {
+                hasVersion = true;
+                parsedTemplate.version = g_form.getValue('u_version');
+            }
+
+
+            if (g_form.getValue('u_deployment_name') == '') {
+                if (hasVersion) {
+                    var vers = g_form.getValue('u_version');
+                    var versRegx = new RegExp('[^a-zA-Z0-9]', 'g');
+                    var depName = 'deploymentName__' + vers.replace(versRegx, ' ').trim().replaceAll(' ', '_');
+                    parsedTemplate.deploymentName = g_form.getValue(depName);
+
+                } else {
+                    parsedTemplate.deploymentName = g_form.getValue('deploymentName');
+                }
+            } else {
+                parsedTemplate.deploymentName = g_form.getValue('u_deployment_name');
+            }
+
+            if (hasVersion) {
+                var vers = g_form.getValue('u_version');
+                var versRegx = new RegExp('[^a-zA-Z0-9]', 'g');
+                var desc = 'description__' + vers.replace(versRegx, ' ').trim().replaceAll(' ', '_');
+                if (!(g_form.getValue(desc) == '' || g_form.getValue(desc) == 'undefined' || g_form.getValue(desc) == undefined)) {
+                    parsedTemplate.reason = g_form.getValue(desc);
+                }
+
+            } else {
+                if (!(g_form.getValue('description') == '' || g_form.getValue('description') == 'undefined' || g_form.getValue('description') == undefined)) {
+                    parsedTemplate.reason = g_form.getValue('description');
+                }
+
+            }
+            parsedTemplate.projectId = g_form.getValue('u_project');
+
+            var i = 0;
+            for (var inputs in parsedTemplate.inputs) {
+				
+                var casName = parsedRes.variables[i].CasName;
+                var casDatatype = parsedRes.variables[i].casData;
+                var nameVersion = parsedRes.variables[i].name;
+                
+                if (casName.startsWith("STR_")) {
+					
+                    if (casDatatype == "Multiselect" || casDatatype == "Duallist") {
+                        var formElement = g_form.getControl("macro_" + nameVersion);
+                        var value;
+                        if (formElement.querySelector){
+                            value = formElement.querySelector("#answer" + nameVersion).value+'';
+                        }
+                        parsedTemplate.inputs[inputs] = value;
+						
+                    } else if (casDatatype == "ValuePicker") {
+                        var formElement2 = g_form.getControl("macro_" + nameVersion);
+                        var value;
+                        if (formElement2.querySelector){
+                            var answerContainerElement = formElement2.querySelector("#answer_container");
+                            value = answerContainerElement.value || "";
+                        }
+                        if (value.startsWith('{') || value.startsWith('"') || value.startsWith('[')) {
+                            parsedTemplate.inputs[inputs] = JSON.parse(value);
+
+                        } else {
+                            parsedTemplate.inputs[inputs] = value;
+                        }
+						
+                    } else if (casDatatype == "DataGrid") {
+                        var value = g_form.getValue(nameVersion);
+						if (value.startsWith('{') || value.startsWith('"') || value.startsWith('[')) {
+                            parsedTemplate.inputs[inputs] = JSON.parse(value);
+                        } else {
+							value = value ? value : [];
+                            parsedTemplate.inputs[inputs] = value;
+                        }  
+						
+                    } else {
+                        if (!casName.startsWith("upfront_price")) {
+                            parsedTemplate.inputs[inputs] = g_form.getValue(nameVersion);
+                        }
+                    }
+                } else if (casName.startsWith("RADO_")) {
+                    parsedTemplate.inputs[inputs] = g_form.getValue(nameVersion);
+					
+                } else if (casName.startsWith("ARR_")) {
+                    var value = g_form.getValue(nameVersion);
+                    value = value.trim();
+                    parsedTemplate.inputs[inputs] = value.split(',');
+					
+                } else if (casName.startsWith("Date_") || casName.startsWith('DATE_')) {
+                    var dateField = new Date().getTime();
+                    var selectedDate = new Date(getDateFromFormat(g_form.getValue(nameVersion), g_user_date_time_format)).getTime();
+                    var adate = new Date(selectedDate);
+                    var data2 = adate.toISOString();
+                    parsedTemplate.inputs[inputs] = data2;
+					
+                } else if (casName.startsWith('PSD_')) {
+                    parsedTemplate.inputs[inputs] = g_form.getValue(nameVersion);
+					
+                } else if (casName.startsWith("BOOL_")) {
+                    if (g_form.getValue(nameVersion) == "true") {
+                        parsedTemplate.inputs[inputs] = true;
+                    } else if (casName.startsWith("ARR_")) {
+                        parsedTemplate.inputs[inputs] = g_form.getValue(nameVersion).split(",");
+                    }
+                    if (g_form.getValue(nameVersion) == "false") {
+                        parsedTemplate.inputs[inputs] = false;
+                    }
+					
+                } else if (casName.startsWith("INT_")) {
+
+                    var value = parseInt(g_form.getValue(nameVersion));
+                    if (!isNaN(value)) {
+                        if (casDatatype == "Decimal") {
+                            parsedTemplate.inputs[inputs] = parseFloat(g_form.getValue(nameVersion));
+                        } else {
+
+                            parsedTemplate.inputs[inputs] = parseInt(g_form.getValue(nameVersion));
+                        }
+
+                    } else {
+
+                        parsedTemplate.inputs[inputs] = 0;
+                    }
+                } else {
+                    parsedTemplate.inputs[inputs] = g_form.getValue(nameVersion);
+                }
+                i++;
+            }
+
+        }
+        upfrontPriceApiCall(parsedTemplate);
+        deferred1.resolve(response);
+    }
+
+    function upfrontPriceApiCall(parsedTemplate) {
+        var bodyString = JSON.stringify(parsedTemplate);
+        var gAjaxPrice = new GlideAjax('x_vmw_cloudservice.CSClientScriptBridge');
+        gAjaxPrice.addParam('sysparm_name', 'upfrontPriceId');
+        gAjaxPrice.addParam('sysparm_sys_id', catItemSysid);
+        gAjaxPrice.addParam('sysparm_body', bodyString);
+        gAjaxPrice.getXMLAnswer(callBack);
+
+        function callBack(responseprice) {
+            if (!(responseprice == false || responseprice == 'false')) {
+                var response = JSON.parse(responseprice);
+                var finalRes = [];
+				
+				finalRes.push({
+                        "resourceName": 'Total Price',
+                        "Price":  response.dailyTotalPrice != '0' ? parseFloat(response.dailyTotalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g , ",") : undefined,
+				});
+                var subArray2 = [];
+                for (var i = 0; i < response.resourcePriceDetails.length; i++) {
+
+                    subArray2[response.resourcePriceDetails[i].resourceName] = [];
+
+                    if (!(response.resourcePriceDetails[i].dailyComputePrice == '0' || response.resourcePriceDetails[i].dailyComputePrice == undefined)) {
+                        subArray2[response.resourcePriceDetails[i].resourceName].push({
+                            "resourceName": "Compute",
+                            "Price": response.resourcePriceDetails[i].dailyComputePrice != '0' ? parseFloat(response.resourcePriceDetails[i].dailyComputePrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : undefined,
+                        });
+                    }
+                    if (!(response.resourcePriceDetails[i].dailyStoragePrice == '0' || response.resourcePriceDetails[i].dailyStoragePrice == undefined)) {
+                        subArray2[response.resourcePriceDetails[i].resourceName].push({
+                            "resourceName": "Storage",
+                            "Price": response.resourcePriceDetails[i].dailyStoragePrice != '0' ? parseFloat(response.resourcePriceDetails[i].dailyStoragePrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : undefined,
+                        });
+                    }
+
+                    if (!(response.resourcePriceDetails[i].dailyAdditionalPrice == '0' || response.resourcePriceDetails[i].dailyAdditionalPrice == undefined)) {
+                        subArray2[response.resourcePriceDetails[i].resourceName].push({
+                            "resourceName": "Additional",
+                            "Price": response.resourcePriceDetails[i].dailyAdditionalPrice != '0' ? parseFloat(response.resourcePriceDetails[i].dailyAdditionalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : undefined,
+
+
+                        });
+                    }
+
+                    finalRes.push({
+                        "resourceName": response.resourcePriceDetails[i].resourceName,
+                        "Price": response.resourcePriceDetails[i].dailyTotalPrice != '0' ? response.resourcePriceDetails[i].dailyTotalPrice != undefined ? parseFloat(response.resourcePriceDetails[i].dailyTotalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : 'Price_not_applicable' : '0.00',
+                        "sub": subArray2[response.resourcePriceDetails[i].resourceName].length != '0' ? subArray2[response.resourcePriceDetails[i].resourceName] : undefined,
+                    });
+                }
+			
+				g_form.setValue('upfront_price',('$'+parseFloat(response.dailyTotalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")));
+				
+                var res = {
+                    "details": finalRes,
+                    "price": parseFloat(response.dailyTotalPrice).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","),
+                };
+                deferred2.resolve(res);
+            } else {
+				g_form.setValue('upfront_price','Unable to calculate price. Please check logs for more information.');
+				
+                var res = {
+                    "details": "error",
+                    "price": '0'
+                };
+                deferred2.resolve(res);
+
+
+            }
+
+
+        }
+    }
+    return Promise.all([deferred1.promise(), deferred2.promise()]).then(function(responses) {
+        // Return the combined response
+        return {
+            response1: responses[0],
+            response2: responses[1],
+        };
+    });
+}]]></script>
+        <script_name>upfront_price</script_name>
+        <sys_class_name>sys_ui_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2023-04-06 07:57:55</sys_created_on>
+        <sys_id>835c6e552f8221100f70fe1df699b68e</sys_id>
+        <sys_mod_count>58</sys_mod_count>
+        <sys_name>x_vmw_cloudservice.upfront_price</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_ui_script_835c6e552f8221100f70fe1df699b68e</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-05-18 08:18:45</sys_updated_on>
+        <ui_type>0</ui_type>
+        <use_scoped_format>false</use_scoped_format>
+    </sys_ui_script>
+</record_update>

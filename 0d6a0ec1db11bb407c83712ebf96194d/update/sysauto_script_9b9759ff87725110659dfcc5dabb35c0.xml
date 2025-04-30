@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sysauto_script">
+    <sysauto_script action="INSERT_OR_UPDATE">
+        <active>false</active>
+        <business_calendar/>
+        <condition/>
+        <conditional>false</conditional>
+        <entered_time/>
+        <max_drift/>
+        <name>Deployments Delta Sync</name>
+        <offset/>
+        <offset_type>0</offset_type>
+        <run_as/>
+        <run_as_tz/>
+        <run_dayofmonth>1</run_dayofmonth>
+        <run_dayofweek>7</run_dayofweek>
+        <run_period/>
+        <run_start>2022-11-03 06:46:54</run_start>
+        <run_time>1970-01-02 07:59:59</run_time>
+        <run_type>daily</run_type>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2022-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+(function() {
+
+    var appUtil = new CASAppUtil();
+    var x = new CASDaoUtil();
+
+    try {
+        var configurationChecks = gs.getProperty(appUtil.configuration.properties.configurationCheck);
+        if (configurationChecks == 'true') {
+            CASLogger.debug('Inside Deployments Delta Sync Schedule Job');
+            var time = gs.getProperty(appUtil.configuration.properties.deployments_last_sync).toString();
+            gs.setProperty(appUtil.configuration.properties.delta_trigger_time, new GlideDateTime().getValue());
+            if (time == '') {
+                x.ScheduleJobForCMDB('DeltaSyncFirstRun');
+                x.checkThreadLimit();
+            } else {
+                var gdt = new GlideDateTime(time);
+                if (gdt.isValid()) {
+                    time = gdt.toString().split(' ').join('T');
+                    time = '[' + time + '.000Z,]';
+                    time = gs.urlEncode(time);
+                    x.ScheduleJobForCMDB('DeltaSync', time);
+                    x.checkThreadLimit();
+                } else {
+                    CASLogger.error('Inside Deployments Delta Sync: Invalid value for last sync date and time');
+                    return;
+                }
+
+            }
+
+        }
+    } catch (e) {
+        CASLogger.error("Exception caught inside Delta Deployments Sync" + e);
+    }
+
+
+})();]]></script>
+        <sys_class_name>sysauto_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2022-11-03 06:48:54</sys_created_on>
+        <sys_id>9b9759ff87725110659dfcc5dabb35c0</sys_id>
+        <sys_mod_count>8</sys_mod_count>
+        <sys_name>Deployments Delta Sync</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sysauto_script_9b9759ff87725110659dfcc5dabb35c0</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 05:56:47</sys_updated_on>
+        <time_zone/>
+        <upgrade_safe>false</upgrade_safe>
+    </sysauto_script>
+</record_update>

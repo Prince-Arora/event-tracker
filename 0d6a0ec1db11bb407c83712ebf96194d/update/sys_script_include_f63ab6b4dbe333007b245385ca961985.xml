@@ -1,0 +1,1622 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>public</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.CSClientScriptBridge</api_name>
+        <caller_access/>
+        <client_callable>true</client_callable>
+        <description/>
+        <name>CSClientScriptBridge</name>
+        <script><![CDATA[/************************************************************
+ * Copyright (c) 2019-2023 VMware, Inc. All Rights Reserved.
+ * You may not use this product except in compliance with the License.
+ * This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+ *************************************************************/
+var CSClientScriptBridge = Class.create();
+CSClientScriptBridge.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+
+    /*
+        Function Name: DateTime
+        Comments: This function is use to convert the request parameters of Date/Time for the external source value.
+        Created On: 07 jan 2021
+        Created By: Shivam Goyal
+          */
+
+    DateTime: function() {
+        try {
+            var result = {
+                "datafields": '',
+                "dates": ''
+            };
+            this.appUtil = new CASAppUtil();
+            var data = this.getParameter('sysparm_obj');
+            var datafield = this.getParameter('sysparm_value');
+            CASLogger.debug('Inside  CSClientScriptBridge.DateTime: DateTime: ' + data + 'field :' + datafield);
+            var a = data.split('T')[0];
+            var b = data.split('T')[1];
+            var c = a + " " + b.split('+')[0];
+            var dt = new GlideDateTime(c);
+            var ct = dt.getNumericValue();
+            var d = new Date(ct);
+            var date = d.getFullYear() + '-' + this.appUtil.appendLeadingZeroes(d.getMonth() + 1) + '-' + this.appUtil.appendLeadingZeroes(d.getDate()) + ' ' + this.appUtil.appendLeadingZeroes(d.getHours()) + ':' + this.appUtil.appendLeadingZeroes(d.getMinutes()) + ':' + this.appUtil.appendLeadingZeroes(d.getSeconds());
+
+            result.dates = date;
+            result.datafields = datafield;
+
+            return JSON.stringify(result);
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.DateTime: Exception Block: DateTime: ' + data + 'Field:' + datafield + 'Converted Date/Time:' + date);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.DateTime " + e + ". Error found" + e.stack);
+
+        }
+    },
+
+    /*
+        Function Name: getAllhiddenFields
+        Comments: This function is used to hide correct fields on RITM for Deployment Day 2 actions
+        Created On: 25 Sep 2023
+        Created By: Sachin Gavhane
+          */
+
+    getAllhiddenFields: function() {
+        try {
+            this.appUtil = new CASAppUtil();
+            var catalog = this.getParameter('sysparm_catalogid');
+            var array = this.getParameter('sysparm_array');
+            CASLogger.debug('Inside  CSClientScriptBridge.getAllhiddenFields: catalog: ' + catalog);
+            var fields = '';
+            var itemGR = new GlideRecord(this.appUtil.configuration.table.variable);
+            itemGR.addEncodedQuery('cat_item=' + catalog + '^typeNOT IN20,24,19');
+            itemGR.query();
+            while (itemGR.next()) {
+                if (array.includes(itemGR.name) == false) {
+                    fields += itemGR.name + ',';
+                }
+            }
+            CASLogger.debug('Inside CSClientScriptBridge.getAllhiddenFields:---fields: ' + fields);
+            return fields.slice(0, -1);
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getAllhiddenFields: Exception Block: catalog: ' + catalog + ' fields: ' + fields);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getAllhiddenFields " + e + ". Error found" + e.stack);
+        }
+    },
+
+    getVersions: function(catalogSysid) {
+        try {
+            CASLogger.debug('Inside  CSClientScriptBridge.getVersions: Getting of versions: CatalogSys ID: ' + catalogSysid);
+            catalogSysid = (catalogSysid) ? catalogSysid : this.getParameter('sysparm_sys_id');
+            this.daoUtil = new CASDaoUtil();
+            var versions = this.daoUtil.getCatalogVersion(catalogSysid);
+            CASLogger.debug('Inside Versions: ' + versions);
+            return versions;
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getVersions: Exception Block: catalogSysid: ' + catalogSysid + ' versions: ' + versions);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getVersions " + e + ". Error found" + e.stack);
+        }
+
+    },
+
+
+    getProjects: function(catalogSysid) {
+        try {
+            CASLogger.debug('Inside  CSClientScriptBridge.getProjects: Getting of projects: CatalogSys ID: ' + catalogSysid);
+            catalogSysid = (catalogSysid) ? catalogSysid : this.getParameter('sysparm_sys_id');
+            this.daoUtil = new CASDaoUtil();
+            var projectsArr = this.daoUtil.getCatalogProjects(catalogSysid);
+            CASLogger.debug('Inside projectsArr: ' + projectsArr);
+            return projectsArr;
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getProjects: Exception Block: catalogSysid: ' + catalogSysid + ' projectsArr: ' + projectsArr);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getProjects " + e + ". Error found" + e.stack);
+        }
+    },
+
+    /*
+              Function Name: dropDownValueList
+              Comments: This function is use for getting the dropDown ValueList data from question choice.
+              Created On: 07 July 2022
+              Created By: Shivam
+              */
+    dropDownValueList: function() {
+        try {
+            CASLogger.debug('Inside CSClientScriptBridge.dropDownValueList: Getting dropDown ValueList data . ');
+            this.appUtil = new CASAppUtil();
+            var catalogSysId = this.getParameter('sysparm_sys_id');
+            var field = this.getParameter('sysparm_field');
+            var value = this.getParameter('sysparm_value');
+            var readVal = this.getParameter('sysparm_read');
+            var list = [];
+            var grVar = new GlideRecord(this.appUtil.configuration.table.variable);
+            grVar.addEncodedQuery('cat_item=' + catalogSysId + '^name=' + field);
+            grVar.query();
+            if (grVar.next()) {
+                var grChoice = new GlideRecord(this.appUtil.configuration.table.choice);
+                grChoice.addEncodedQuery('question=' + grVar.sys_id + '');
+                grChoice.query();
+                while (grChoice.next()) {
+                    list.push(grChoice.value + '');
+                }
+                var dependencyResponse = {
+                    list: list,
+                    field: field,
+                    value: value,
+                    readVal: readVal
+                };
+                return JSON.stringify(dependencyResponse);
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.dropDownValueList: Exception Block: Field: ' + field + ' Value: ' + value + ' catalogSysId: ' + catalogSysId);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.dropDownValueList " + e + ". Error found" + e.stack);
+        }
+    },
+
+
+    /*
+          Function Name: bindField
+          Comments: This function is use for getting the request info and customer properties value from resource.
+          Created On: 21 June 2022
+          Created By: Ajay
+          */
+
+    bindField: function() {
+        try {
+            CASLogger.debug('Inside CSClientScriptBridge.bindField: Getting bind fied data from resource. ');
+
+            this.appUtil = new CASAppUtil();
+            var parameters = this.getParameter('sysparm_parameters');
+            var resourceIdSysId = this.getParameter('sysparm_resource');
+            var dependency = this.getParameter('sysparm_dependency');
+            var field = this.getParameter('sysparm_field');
+            var uri = this.getParameter('sysparm_uri');
+            var bind = this.getParameter('sysparm_bind');
+            var dataType = this.getParameter('sysparm_dataType');
+            var readOnly = this.getParameter('sysparm_readOnly');
+            var grResource = new GlideRecord(this.appUtil.configuration.table.machines);
+            grResource.addQuery("sys_id", resourceIdSysId);
+            grResource.query();
+            if (grResource.next()) {
+                parameters = JSON.parse(parameters);
+                for (var key in parameters) {
+                    if (parameters[key].value == "_projectId") {
+                        parameters[key].value = grResource.project.project_id + '';
+                    } else if (parameters[key].value == "_projectName") {
+                        parameters[key].value = grResource.project.getDisplayValue() + '';
+                    } else if (parameters[key].value == "_deploymentId") {
+                        parameters[key].value = grResource.deploymentid + '';
+                    } else if (parameters[key].value == "_currentOrgId") {
+                        parameters[key].value = grResource.project.organization_id + '';
+                    } else if (parameters[key].value == "_requestedBy") {
+                        parameters[key].value = "";
+                    } else {
+                        var valueSearch = parameters[key].value;
+
+
+                        if (valueSearch.startsWith("_resource.")) {
+                            valueSearch = valueSearch.replace("_resource.", '');
+                            var ResourceJSON = JSON.parse(grResource.vra_direct_binding);
+                            var arr = [];
+                            arr = valueSearch.split(".");
+
+                            var JSONResponse = ResourceJSON;
+
+                            for (var i = 0; i < arr.length; i++) {
+                                JSONResponse = JSONResponse[arr[i]];
+                                if (JSONResponse == "undefined" || JSONResponse == undefined || JSONResponse == "Undefined") {
+                                    break;
+                                }
+                            }
+
+                            if (JSONResponse == "undefined" || JSONResponse == undefined || JSONResponse == "Undefined") {
+                                parameters[key].value = '';
+                                CASLogger.debug('Inside Catch Block of CSClientScriptBridge.bindField: No response received from resource direct_binding field json' + JSONResponse);
+                            } else {
+
+                                parameters[key].value = JSONResponse + '';
+                            }
+                        }
+                    }
+                }
+                var dependencyResponse = {
+                    depend: dependency,
+                    field: field,
+                    uri: uri,
+                    response: parameters,
+                    bind: bind,
+                    dataType: dataType,
+                    readOnly: readOnly
+
+                };
+                return JSON.stringify(dependencyResponse);
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.bindField: Exception Block: uri: ' + uri + ' Dependency: ' + dependency + ' parameters: ' + parameters + ' Field: ' + field + ' resourceIdSysId: ' + resourceIdSysId);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.bindField " + e + ". Error found" + e.stack);
+        }
+
+
+
+    },
+
+
+    /*
+          Function Name: dep_bindField
+          Comments: This function is use for getting the request info fields value from deployment.
+          Created On: 21 June 2022
+          Created By: Ajay
+          */
+
+
+    dep_bindField: function() {
+        try {
+            CASLogger.debug('Inside CSClientScriptBridge.Dep_bindField: Getting bind fied data from resource. ');
+            this.appUtil = new CASAppUtil();
+            var parameters = this.getParameter('sysparm_parameters');
+            var deploymentId = this.getParameter('sysparm_deploymentid');
+            var dependency = this.getParameter('sysparm_dependency');
+            var field = this.getParameter('sysparm_field');
+            var uri = this.getParameter('sysparm_uri');
+            var bind = this.getParameter('sysparm_bind');
+            var dataType = this.getParameter('sysparm_dataType');
+            var readOnly = this.getParameter('sysparm_readOnly');
+            var grDep = new GlideRecord(this.appUtil.configuration.table.deployments);
+            grDep.addQuery("sys_id", deploymentId);
+            grDep.query();
+            if (grDep.next()) {
+                parameters = JSON.parse(parameters);
+                for (var key in parameters) {
+                    if (parameters[key].value == "_projectId") {
+                        parameters[key].value = grDep.u_project.project_id + '';
+                    } else if (parameters[key].value == "_projectName") {
+                        parameters[key].value = grDep.u_project.getDisplayValue() + '';
+                    } else if (parameters[key].value == "_deploymentId") {
+                        parameters[key].value = grDep.deployment_id + '';
+                    } else if (parameters[key].value == "_currentOrgId") {
+                        parameters[key].value = grDep.u_project.organization_id + '';
+                    } else if (parameters[key].value == "_requestedBy") {
+                        parameters[key].value = "";
+                    } else {
+                        var valueSearch = parameters[key].value;
+                    }
+                }
+                var dependencyResponse = {
+                    depend: dependency,
+                    field: field,
+                    uri: uri,
+                    response: parameters,
+                    bind: bind,
+                    dataType: dataType,
+                    readOnly: readOnly
+
+                };
+                return JSON.stringify(dependencyResponse);
+            }
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.dep_bindField: Exception Block: uri: ' + uri + ' Dependency: ' + dependency + ' parameters: ' + parameters + ' Field: ' + field + ' deploymentId: ' + deploymentId);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.dep_bindField " + e + ". Error found" + e.stack);
+        }
+
+    },
+
+
+    /*
+    Function Name: dynamicDropDownValues
+    Comments: This function is use to create the request parameters for the external source API call for dynamic dropdown values.
+    Updated On: 30 April 2021
+    Updated By: Prateek
+    Update Comments: Adding the condition for Day2 Action request parameters creation.
+    */
+    dynamicDropDownValues: function() {
+        try {
+            CASLogger.debug('Inside CSClientScriptBridge.dynamicDropDownValues: Calling Dynamic Dropdown API Call. ');
+            this.appUtil = new CASAppUtil();
+            var parent = '';
+            var uri = this.getParameter('sysparm_url');
+            var datasource = this.getParameter('sysparm_datasource');
+            var parameters = this.getParameter('sysparm_parameter');
+            var projectId = this.getParameter('sysparm_projectId');
+            var catalog = this.getParameter('sysparm_sys_id');
+            var deployment = this.getParameter('sysparm_deployment_sys_id');
+            var time = this.getParameter('sysparm_time');
+
+            CASLogger.debug('Inside CSClientScriptBridge.dynamicDropDownValues: project ID: ' + projectId + ' Deployment: ' + deployment);
+            CASLogger.debug('Inside CSClientScriptBridge.dynamicDropDownValues: Time:' + time);
+            if (deployment) {
+                var grDep = new GlideRecord(this.appUtil.configuration.table.deployments);
+                if (grDep.get(deployment)) {
+                    parent = grDep.u_project.organization;
+                    projectId = grDep.u_project.project_id;
+                    CASLogger.debug('Inside table.deployments gliderecord of CSClientScriptBridge.dynamicDropDownValues:---projectId: ' + projectId);
+                }
+            } else {
+                var grCat = new GlideRecord(this.appUtil.configuration.table.catalogItem);
+                if (grCat.get(catalog)) {
+                    parent = grCat.organisation_name;
+                    CASLogger.debug('Inside table.catalogItem gliderecord of CSClientScriptBridge.dynamicDropDownValues:---parent: ' + parent);
+                }
+            }
+
+            if (time) {
+
+                return time + 'responseSplitter@*' + this.externalSourceApiCall(uri, datasource, JSON.parse(parameters), projectId, parent);
+            } else {
+
+                return this.externalSourceApiCall(uri, datasource, JSON.parse(parameters), projectId, parent);
+            }
+
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.dynamicDropDownValues: Exception Block: uri: ' + uri + ' datasource: ' + datasource + ' parameters: ' + parameters + ' projectId: ' + projectId + ' catalog: ' + catalog + ' deployment: ' + deployment + ' time: ' + time);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.dynamicDropDownValues " + e + ". Error found" + e.stack);
+            return false;
+        }
+
+    },
+
+
+    /*
+    Function Name: multipleRequestDropdownValues
+    Comments: This function is use to create multiple request parameters for the external source API call for dynamic dropdown values.
+    Created On: 14 Sep 2021
+    Updated By: Vaibhav
+	Updated Comments : Changes in response for VSNOW-3113
+    */
+    multipleRequestDropdownValues: function() {
+        try {
+
+            this.appUtil = new CASAppUtil();
+            var body = this.getParameter('sysparm_obj');
+            var catalog = this.getParameter('sysparm_sys_id');
+            var project = this.getParameter('sysparm_projectId');
+            var fieldsdata = this.getParameter('sysparm_fieldsdata');
+            fieldsdata = JSON.parse(fieldsdata);
+            CASLogger.debug('Inside CSClientScriptBridge.multipleRequestDropdownValues: body: ' + body + ' catalog: ' + catalog + ' project: ' + project);
+            var endpointGr = '';
+            var endPoint, token, midserver = '';
+            var grItem = new GlideRecord(this.appUtil.configuration.table.catalogItem);
+            if (grItem.get(catalog)) {
+                endpointGr = grItem.organisation_name;
+            }
+            if (endpointGr.select_automation_service == 'vRealiseAutomationCloud') {
+                token = endpointGr.api_token.getDecryptedValue();
+                endPoint = endpointGr.cas_url + this.appUtil.configuration.api.externalValues + project;
+                CASLogger.debug('Inside CSClientScriptBridge.multipleRequestDropdownValues: cloud endpoint: ' + endPoint);
+            }
+            if (endpointGr.select_automation_service == 'vrealizeAutomationService') {
+
+                if (endpointGr.mid_server == null || endpointGr.mid_server == undefined || endpointGr.mid_server == '') {
+                    var midGR = new GlideRecord(this.appUtil.configuration.table.register_cas);
+                    midGR.addQuery("sys_id", endpointGr.sys_id);
+                    midGR.query();
+                    if (midGR.next()) {
+                        midserver = midGR.mid_server.name;
+                        CASLogger.debug('Inside CSClientScriptBridge.multipleRequestDropdownValues:---midserver: ' + midserver);
+                    }
+                } else {
+                    midserver = endpointGr.mid_server.name;
+                }
+
+                endPoint = endpointGr.hostname + this.appUtil.configuration.api.externalValues + project;
+                CASLogger.debug('Inside CSClientScriptBridge.multipleRequestDropdownValues: cloud endpoint: ' + endPoint);
+                token = endpointGr.api_token.getDecryptedValue();
+            }
+            var response = this.appUtil.externalSourceMakeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside CatalogImport.multipleRequestDropdownValues:---response: ' + response);
+            if (response.haveError()) {
+                CASLogger.error('REST call error found inside CatalogImport.multipleRequestDropdownValues: ' + response.getErrorMessage() + "Status code:" + response.getStatusCode());
+                return "false";
+            } else {
+                var responseBody = response.getBody();
+                responseBody = JSON.parse(responseBody);
+                for (var requestId in fieldsdata) {
+                    var displayType = fieldsdata[requestId][0]['displayType'];
+                    if (displayType === "datagrid") {
+                        for (var i = 0; i < responseBody.length; i++) {
+                            if (responseBody[i].requestId == requestId) {
+                                var name = fieldsdata[requestId][0].name;
+                                for (var key in fieldsdata[requestId][0].result[name]) {
+                                    var dtype = fieldsdata[requestId][0].result[name][key].dataType;
+                                    if (dtype == 'dateTime') {
+                                        var field_id = fieldsdata[requestId][0].result[name][key].id;
+                                        for (var p = 0; p < responseBody[i]['data'].length; p++) {
+                                            for (var resp_id in responseBody[i].data[p]) {
+                                                if (resp_id == field_id) {
+                                                    var old_val = responseBody[i].data[p][resp_id];
+                                                    var data1 = old_val.split('T')[0];
+                                                    var data2 = old_val.split('T')[1];
+                                                    var data3 = data1 + " " + data2.split('+')[0];
+                                                    var dt = new GlideDateTime(data3);
+                                                    var ct = dt.getNumericValue();
+                                                    var d = new Date(ct);
+                                                    var date = d.getFullYear() + '-' + this.appUtil.appendLeadingZeroes(d.getMonth() + 1) + '-' + this.appUtil.appendLeadingZeroes(d.getDate()) + ' ' + this.appUtil.appendLeadingZeroes(d.getHours()) + ':' + this.appUtil.appendLeadingZeroes(d.getMinutes()) + ':' + this.appUtil.appendLeadingZeroes(d.getSeconds());
+                                                    responseBody[i].data[p][resp_id] = date;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                CASLogger.debug('Inside Else Block of CSClientScriptBridge.multipleRequestDropdownValues: ResponseBody: ' + responseBody);
+                return JSON.stringify(responseBody);
+            }
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.multipleRequestDropdownValues: Exception Block: body: ' + body + ' catalog: ' + catalog + ' project: ' + project + ' responseBody: ' + responseBody);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.multipleRequestDropdownValues " + e + ". Error found" + e.stack);
+            return false;
+        }
+    },
+
+
+    /*
+    Function Name: dynamicDropDownActionsValue
+    Comments: This function is use to create the request parameters for the external source API call for dynamic dropdown action values.
+    Updated On: 3 May 2021
+    Updated By: Ayush
+    Update Comments: NA
+    */
+    dynamicDropDownActionsValue: function() {
+        try {
+            CASLogger.debug('Inside  CSClientScriptBridge.dynamicDropDownActionsValue: Calling Dynamic Dropdown API Call for Actions. ');
+            this.appUtil = new CASAppUtil();
+            var parent = '';
+            var uri = this.getParameter('sysparm_url');
+            var datasource = this.getParameter('sysparm_datasource');
+            var parameters = this.getParameter('sysparm_parameter');
+            var projectId = this.getParameter('sysparm_projectId');
+            var catalog = this.getParameter('sysparm_sys_id');
+            var field = this.getParameter('sysparm_field');
+            var deployment = this.getParameter('sysparm_deployment_sys_id');
+            var bind = this.getParameter('sysparm_bind');
+            var dataType = this.getParameter('sysparm_dataType');
+            var readOnly = this.getParameter('sysparm_readOnly');
+            CASLogger.debug('Inside CSClientScriptBridge.dynamicDropDownActionsValue: project ID: ' + projectId + ' Deployment: ' + deployment + ' catalog: ' + catalog);
+
+            if (deployment) {
+                var grDeps = new GlideRecord(this.appUtil.configuration.table.deployments);
+                if (grDeps.get(deployment)) {
+                    parent = grDeps.u_project.organization;
+                    projectId = grDeps.u_project.project_id;
+                    CASLogger.debug('Inside table.deployments gliderecord of CSClientScriptBridge.dynamicDropDownActionsValue:--- parent: ' + parent + ' projectId: ' + projectId);
+                }
+            } else {
+                var grCats = new GlideRecord(this.appUtil.configuration.table.catalogItem);
+                if (grCats.get(catalog)) {
+                    parent = grCats.organisation_name;
+                    CASLogger.debug('Inside table.catalogItem gliderecord of CSClientScriptBridge.dynamicDropDownActionsValue: ---parent: ' + parent);
+                }
+            }
+            var returnObj = {
+                field: field,
+                bind: bind,
+                dataType: dataType,
+                readOnly: readOnly,
+                response: JSON.parse(this.externalSourceApiCall(uri, datasource, JSON.parse(parameters), projectId, parent))
+            };
+            CASLogger.debug('Inside CSClientScriptBridge.dynamicDropDownActionsValue: Value of ReturnObj: ' + returnObj);
+
+            return JSON.stringify(returnObj);
+
+
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.dynamicDropDownActionsValue: Exception Block: uri: ' + uri + ' datasource: ' + datasource + ' parameters: ' + parameters + ' projectId: ' + projectId + ' catalog: ' + catalog + ' field: ' + field + ' deployment: ' + deployment);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.dynamicDropDownActionsValue " + e + ". Error found" + e.stack);
+        }
+
+    },
+
+    /*
+    Function Name : getValuepickerReferencedValues
+    Comments: This function is use to create the request parameters for the Reference value of valuepicker and paasing it to API call for Service Portal.
+    Updated On: 30 April 2021
+    Updated By: Prateek
+    Update Comments : Adding the condition for Day2 Action request parameters creation.
+    */
+    getValuepickerReferencedValues: function(catalog, referenceType, filter, deployment) {
+        try {
+            CASLogger.debug('Inside  CSClientScriptBridge.getReferencedValuepickerValues: Creating parameters for Valuepicker API Call. ');
+            CASLogger.debug('Inside CSClientScriptBridge.getReferencedValuepickerValues: Catalog: ' + catalog + '------ Deployment: ' + deployment + ' referenceType: ' + referenceType);
+            this.appUtil = new CASAppUtil();
+            var endpointGr = {};
+
+
+            if (deployment) {
+                var grTab = new GlideRecord(this.appUtil.configuration.table.deployments);
+                if (grTab.get(deployment)) {
+                    endpointGr = grTab.u_project.organization;
+                    CASLogger.debug('Inside table.deployments gliderecord of CSClientScriptBridge.getReferencedValuepickerValues:---endpointGr: ' + endpointGr);
+                }
+            } else {
+                var grCitem = new GlideRecord(this.appUtil.configuration.table.catalogItem);
+                if (grCitem.get(catalog)) {
+                    endpointGr = grCitem.organisation_name;
+                    CASLogger.debug('Inside table.catalogItem gliderecord of CSClientScriptBridge.getReferencedValuepickerValues:---endpointGr: ' + endpointGr);
+                }
+            }
+
+            return this.externalSourceValuePickerApiCall(referenceType, endpointGr, filter);
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getReferencedValuepickerValues: Exception Block: catalog: ' + catalog + ' referenceType:' + referenceType + ' filter: ' + filter + ' deployment: ' + deployment);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getReferencedValuepickerValues " + e + ". Error found" + e.stack);
+            return false;
+        }
+    },
+
+
+
+    /*
+    Function Name : getValuepickerExternalValues
+    Comments: This function is use to create the request parameters for the External Source value of valuepicker and paasing it to API call.
+    Updated On: 30 April 2021
+    Updated By: Prateek
+    Update Comments : Adding the condition for Day2 Action request parameters creation.
+    */
+    getValuepickerExternalValues: function(catalog, parametersArr, uri, datasource, projectId, deployment) {
+        try {
+            CASLogger.debug('Inside  CSClientScriptBridge.getValuepickerExternalValues: Creating parameters for Valuepicker external API Call: catalog: ' + catalog + 'Deployment: ' + deployment + ' parametersArr: ' + parametersArr);
+
+            this.appUtil = new CASAppUtil();
+            var endpointGr = {};
+
+            if (deployment) {
+                var grDep = new GlideRecord(this.appUtil.configuration.table.deployments);
+                if (grDep.get(deployment)) {
+                    endpointGr = grDep.u_project.organization;
+                    projectId = grDep.u_project.project_id;
+                    CASLogger.debug('Inside table.deployments gliderecord of CSClientScriptBridge.getValuepickerExternalValues:---endpointG: ' + endpointGr + ' projectId: ' + projectId);
+                }
+            } else {
+                var grCat = new GlideRecord(this.appUtil.configuration.table.catalogItem);
+                if (grCat.get(catalog)) {
+                    endpointGr = grCat.organisation_name;
+                    CASLogger.debug('Inside table.catalogItem gliderecord of CSClientScriptBridge.getValuepickerExternalValues:---endpointG: ' + endpointGr);
+                }
+            }
+
+            var parameters = '[]';
+            return this.externalSourceApiCall(uri, datasource, JSON.parse(parameters), projectId, endpointGr);
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getValuepickerExternalValues: Exception Block: catalog: ' + catalog + ' parametersArr: ' + parametersArr + ' datasource: ' + datasource + ' projectId: ' + projectId + ' deployment: ' + deployment);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getValuepickerExternalValues " + e + ". Error found" + e.stack);
+        }
+    },
+
+    externalSourceApiCall: function(uri, datasource, parameters, projectId, current) {
+        try {
+
+            CASLogger.debug('Inside  CSClientScriptBridge.externalSourceApiCall: Making externalSource API CALL: ProjectID: ' + projectId);
+            this.appUtil = new CASAppUtil();
+
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+
+            var obj = {};
+
+            obj = {
+                "uri": uri + '',
+                "dataSource": datasource + '',
+                "parameters": parameters
+
+            };
+
+            var body = this.appUtil.stringify(obj);
+
+            CASLogger.debug('Inside  CSClientScriptBridge.externalSourceApiCall: Body: ' + body);
+
+            if (current.select_automation_service == 'vRealiseAutomationCloud') {
+                token = current.api_token.getDecryptedValue();
+                endPoint = current.cas_url + this.appUtil.configuration.api.externalSource + projectId;
+                CASLogger.debug('Inside CSClientScriptBridge.externalSourceApiCall: cloud endpoint: ' + endPoint);
+            }
+            if (current.select_automation_service == 'vrealizeAutomationService') {
+
+                if (current.mid_server == null || current.mid_server == undefined || current.mid_server == '') {
+                    var grReg = new GlideRecord(this.appUtil.configuration.table.register_cas);
+                    grReg.addQuery("sys_id", current.sys_id);
+                    grReg.query();
+                    if (grReg.next()) {
+                        midserver = grReg.mid_server.name;
+                        CASLogger.debug('Inside table.register_cas gliderecord of CSClientScriptBridge.externalSourceApiCall:---midserver: ' + midserver);
+                    }
+                } else {
+                    midserver = current.mid_server.name;
+
+                }
+
+                endPoint = current.hostname + this.appUtil.configuration.api.externalSource + projectId;
+
+                CASLogger.debug('Inside CSClientScriptBridge.externalSourceApiCall: endpoint: ' + endPoint);
+                token = current.api_token.getDecryptedValue();
+            }
+
+
+
+            var response = this.appUtil.externalSourceMakeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside CSClientScriptBridge.externalSourceApiCall:---response: ' + response);
+
+            if (response.haveError()) {
+                CASLogger.error('REST call error found inside CatalogImport.externalSourceApiCall: ' + response.getErrorMessage() + "Status code:" + response.getStatusCode());
+                return "Invalid external source";
+            } else {
+
+                var responseBody = response.getBody();
+                CASLogger.debug('Inside Else Block of CSClientScriptBridge.externalSourceApiCall: responseBody: ' + responseBody);
+
+
+                return responseBody;
+
+
+            }
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.externalSourceApiCall: Exception Block: catalog: ' + catalog + ' parameters: ' + parameters + ' uri: ' + uri + ' datasource: ' + datasource + ' projectId: ' + projectId + ' deployment: ' + deployment + ' body:' + body + ' responseBody: ' + responseBody);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.externalSourceApiCall " + e + ". Error found" + e.stack);
+            return false;
+        }
+
+    },
+
+    externalSourceValuePickerApiCall: function(referenceType, current, filter) {
+        try {
+            CASLogger.debug('Inside  CSClientScriptBridge.externalSourceApiCall: Making externalSourceValuePickerApiCall');
+            this.appUtil = new CASAppUtil();
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+
+
+            var obj = {};
+
+
+            obj = {
+                "filter": filter,
+                "valueSource": {
+                    "type": "inventory"
+                },
+                "valueType": {
+                    "dataType": "reference",
+                    "referenceType": referenceType
+                }
+            };
+
+            var body = this.appUtil.stringify(obj);
+            CASLogger.debug('Inside  CSClientScriptBridge.externalSourceValuePickerApiCall: Body: ' + body);
+
+            if (current.select_automation_service == 'vRealiseAutomationCloud') {
+                token = current.api_token.getDecryptedValue();
+                endPoint = current.cas_url + this.appUtil.configuration.api.externalValuePicker;
+                CASLogger.debug('Inside CSClientScriptBridge.externalSourceValuePickerApiCall: cloud endpoint: ' + endPoint);
+            }
+            if (current.select_automation_service == 'vrealizeAutomationService') {
+
+                if (current.mid_server == null || current.mid_server == undefined || current.mid_server == '') {
+                    var grCas = new GlideRecord(this.appUtil.configuration.table.register_cas);
+                    grCas.addQuery("sys_id", current.sys_id);
+                    grCas.query();
+                    if (grCas.next()) {
+                        midserver = grCas.mid_server.name;
+                        CASLogger.debug('Inside table.register_cas gliderecord of CSClientScriptBridge.externalSourceValuePickerApiCall:---midserver: ' + midserver);
+                    }
+                } else {
+                    midserver = current.mid_server.name;
+                }
+
+                endPoint = current.hostname + this.appUtil.configuration.api.externalValuePicker;
+                CASLogger.debug('Inside CSClientScriptBridge.externalSourceValuePickerApiCall: endpoint: ' + endPoint);
+                token = current.api_token.getDecryptedValue();
+            }
+
+
+            var response = this.appUtil.externalSourceMakeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside CSClientScriptBridge.externalSourceValuePickerApiCall:---response: ' + response);
+
+            if (response.haveError()) {
+                CASLogger.error('REST call error found inside CatalogImport.externalSourceValuePickerApiCall: ' + response.getErrorMessage() + "Status code:" + response.getStatusCode());
+                return "Invalid ValuePicker";
+            } else {
+
+                var responseBody = response.getBody();
+                CASLogger.debug('Inside Else Block of CSClientScriptBridge.externalSourceValuePickerApiCall: responseBody: ' + responseBody);
+                return responseBody;
+
+
+            }
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.externalSourceValuePickerApiCall: Exception Block: referenceType: ' + referenceType + ' filter: ' + filter + ' body:' + body + 'responseBody: ' + responseBody);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.externalSourceValuePickerApiCall " + e + ". Error found" + e.stack);
+            return false;
+        }
+
+    },
+
+    /*
+    Function Name : referenceValuePicker
+    Comments: This function is use to create the request parameters for the Reference value of valuepicker and paasing it to API call for Native UI.
+    Updated On: 30 April 2021
+    Updated By: Nayab
+    Update Comments : Adding the condition for Day2 Action request parameters creation.
+    */
+    referenceValuePicker: function() {
+        try {
+            CASLogger.debug('Inside  CSClientScriptBridge.referenceValuePickers. ');
+            this.appUtil = new CASAppUtil();
+            var endpointGr = '';
+            var referenceType = this.getParameter('sysparm_reftype');
+            var catalog = this.getParameter('sysparm_sys_id');
+            var filter = this.getParameter('sysparm_filter');
+            var deployment = this.getParameter('sysparm_deployment_sys_id');
+            CASLogger.debug('Inside  CSClientScriptBridge.referenceValuePicker: Deployment: ' + deployment + ' referenceType: ' + referenceType + ' filter: ' + filter);
+
+            if (deployment) {
+                var grDep = new GlideRecord(this.appUtil.configuration.table.deployments);
+                if (grDep.get(deployment)) {
+                    endpointGr = grDep.u_project.organization;
+                    CASLogger.debug('Inside if block of table.deployments gliderecord of CSClientScriptBridge.referenceValuePickers:---endpointGr: ' + endpointGr);
+                }
+            } else {
+                var grCat = new GlideRecord(this.appUtil.configuration.table.catalogItem);
+                if (grCat.get(catalog)) {
+                    endpointGr = grCat.organisation_name;
+                    CASLogger.debug('Inside else block of table.deployments gliderecord of CSClientScriptBridge.referenceValuePickers:---endpointGr: ' + endpointGr);
+                }
+            }
+
+            return this.externalSourceValuePickerApiCall(referenceType, endpointGr, filter);
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.referenceValuePicker: Exception Block: referenceType: ' + referenceType + ' catalog' + catalog + ' filter:' + filter + ' deployment: ' + deployment);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.referenceValuePicker " + e + ". Error found" + e.stack);
+        }
+    },
+
+
+    getEndpoint: function() {
+        try {
+            this.appUtil = new CASAppUtil();
+            var detials = {};
+            var deployment = this.getParameter('sysparm_deploymentid');
+            CASLogger.debug('Inside CSClientScriptBridge.getEndpoint: Deployment: ' + deployment);
+            var depGR = new GlideRecord(this.appUtil.configuration.table.deployments);
+            if (depGR.get(deployment)) {
+                var endpoint = depGR.u_project.organization + "";
+                var project = depGR.u_project + "";
+                detials = {
+                    "endpoint": endpoint,
+                    "project": project
+                };
+                CASLogger.debug('Inside if block of CSClientScriptBridge.getEndpoint:---detials: ' + detials);
+            }
+            return JSON.stringify(detials);
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getEndpoint: Exception Block: deployment: ' + deployment);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getEndpoint " + e + ". Error found" + e.stack);
+        }
+    },
+
+
+
+
+    getSchema: function() {
+        try {
+            this.daoUtil = new CASDaoUtil();
+            var deployment = this.getParameter('sysparm_deploymentid');
+            var catalog = this.getParameter('sysparm_catalogid');
+
+            var resourceType = this.getParameter('sysparm_type');
+            var query = '';
+            var schema = '';
+            var version = '';
+            CASLogger.debug('Inside CSClientScriptBridge.getSchema: Resource Type: ' + resourceType + ' deployment:' + deployment + ' catalog: ' + catalog);
+            if (resourceType == 'Deployment') {
+                query = 'deployment=' + deployment + '^catalog_item=' + catalog;
+            }
+            if (resourceType == 'Machine') {
+                query = 'machine=' + deployment + '^catalog_item=' + catalog;
+            }
+            this.appUtil = new CASAppUtil();
+            var oprGR = new GlideRecord(this.appUtil.configuration.table.action);
+            oprGR.addEncodedQuery(query);
+            oprGR.query();
+            if (oprGR.next()) {
+                var day2DesignFeature = gs.getProperty(this.appUtil.configuration.properties.featureFlagForDay2DesignChange);
+                if (day2DesignFeature == 'true' || day2DesignFeature == true) {
+                    schema = oprGR.catalog_item.cat_action_schema;
+                } else {
+                    schema = oprGR.action_schema;
+                }
+                var action = oprGR.action_id + '';
+                var versionGR = new GlideRecord(this.appUtil.configuration.table.variable);
+                versionGR.addEncodedQuery('cat_item=' + catalog + '^x_vmw_cloudservice_vra_day2_action=' + action);
+                versionGR.query();
+                if (versionGR.next()) {
+                    version = versionGR.x_vmw_cloudservice_vra_day2_version;
+                }
+                CASLogger.debug('Inside If loop of CSClientScriptBridge.getSchema: Schema: ' + schema + ' Version: ' + version);
+            }
+            var detials = {
+                "schema": schema + '',
+                "versions": version + '',
+            };
+            return JSON.stringify(detials);
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getSchema: Exception Block: deployment: ' + deployment + ' catalog: ' + catalog + ' resourceType' + resourceType + ' query:' + query + ' schema: ' + schema + ' Version: ' + version + ' Deatils: ' + JSON.stringify(detials));
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getSchema " + e + ". Error found" + e.stack);
+        }
+    },
+
+    getAllFields: function() {
+        try {
+
+            this.appUtil = new CASAppUtil();
+            var catalog = this.getParameter('sysparm_catalogid');
+            CASLogger.debug('Inside  CSClientScriptBridge.getAllFields: catalog: ' + catalog);
+            var fields = '';
+            var itemGR = new GlideRecord(this.appUtil.configuration.table.variable);
+            itemGR.addEncodedQuery('cat_item=' + catalog + '^typeNOT IN20,24,19');
+            itemGR.query();
+            while (itemGR.next()) {
+                fields += itemGR.name + ',';
+            }
+            CASLogger.debug('Inside CSClientScriptBridge.getAllFields:---fields: ' + fields);
+            return fields.slice(0, -1);
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getAllFields: Exception Block: catalog: ' + catalog + ' fields: ' + fields);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getAllFields " + e + ". Error found" + e.stack);
+        }
+    },
+    getAllFieldsVersion: function() {
+        try {
+
+            this.appUtil = new CASAppUtil();
+            var catalog = this.getParameter('sysparm_catalogid');
+            var version = this.getParameter('sysparm_version');
+            CASLogger.debug('Inside  CSClientScriptBridge.getAllFieldsVersion: catalog: ' + catalog + ' Version: ' + version);
+            var fields = '';
+            var itemGR1 = new GlideRecord(this.appUtil.configuration.table.variable);
+            itemGR1.addEncodedQuery('cat_item=' + catalog + '^typeNOT IN20,24,19' + '^x_vmw_cloudservice_vra_day2_version!=' + version);
+            itemGR1.query();
+            while (itemGR1.next()) {
+                fields += itemGR1.name + ',';
+            }
+            CASLogger.debug('Inside CSClientScriptBridge.getAllFieldsVersion:---fields: ' + fields);
+            return fields.slice(0, -1);
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getAllFieldsVersion: Exception Block: catalog: ' + catalog + ' fields: ' + fields + ' Version: ' + version);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getAllFieldsVersion " + e + ". Error found" + e.stack);
+        }
+    },
+
+    isOAuthPropertyEnabled: function() {
+        try {
+            this.appUtil = new CASAppUtil();
+            return gs.getProperty(this.appUtil.configuration.properties.enableOAuth);
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.isOAuthPropertyEnabled: Exception Block.');
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.isOAuthPropertyEnabled " + e + ". Error found" + e.stack);
+        }
+    },
+
+    /*
+    Function Name: getFields
+    Comments: This function is use to get the variables of specific catalog items
+    Updated On: 10 March 2022
+    Updated By: Zabiulla M
+    Update Comments: Replaced string value of 'fields'  variable with array. 
+    */
+    getFields: function() {
+        try {
+
+            var fields = [];
+            var catalog = this.getParameter('sysparm_catalogid');
+            CASLogger.debug('Inside  CSClientScriptBridge.getFields: To get the variables of specific catalog items:---catalog: ' + catalog);
+            var varGR = new GlideRecord('item_option_new');
+            varGR.addQuery('cat_item', catalog);
+            varGR.addQuery('type', '!=', '20');
+            varGR.addQuery('type', '!=', '19');
+            varGR.query();
+            while (varGR.next()) {
+                fields.push(varGR.getValue('name'));
+            }
+
+            CASLogger.debug('Inside CSClientScriptBridge.getFields:---fields: ' + fields);
+            var jsonArr = JSON.stringify(fields);
+            return jsonArr;
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getFields: Exception Block: fields: ' + fields + ' catalog: ' + catalog);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getFields " + e + ". Error found" + e.stack);
+        }
+    },
+    /*
+        Function Name: getProperty
+        Comments: This function is used to fetch the created system property value for dyanamic catalog loader.
+        Created On: 17 Sept 2021
+        Created By: Gayatri 
+        */
+    getProperty: function() {
+        try {
+
+            var property = gs.getProperty('x_vmw_cloudservice.catalogLoader');
+            CASLogger.debug('Inside  CSClientScriptBridge.getProperty: Property: ' + property);
+            if (property != '') {
+                return property;
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getProperty: Exception Block: property: ' + property);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getProperty " + e + ". Error found" + e.stack);
+        }
+
+    },
+
+    checkDomainSeparation: function() {
+
+        var ds_plugin1 = GlidePluginManager.isActive("com.glide.domain");
+        var ds_plugin2 = GlidePluginManager.isActive("com.glideapp.servicecatalog.domain_separation");
+        if ((ds_plugin1 == true || ds_plugin1 == 'true') && (ds_plugin2 == true || ds_plugin2 == 'true')) {
+            return true;
+        }
+    },
+
+    getCustomerConsentProperty: function() {
+        try {
+
+            this.appUtil = new CASAppUtil();
+            var consentPropVal = gs.getProperty(this.appUtil.configuration.properties.customer_concent_value);
+            CASLogger.debug('Inside  CSClientScriptBridge.getCustomerConsentProperty: consentPropVal: ' + consentPropVal);
+            if (consentPropVal == false || consentPropVal == 'false') {
+                var last_trigger = new GlideDateTime(gs.getProperty(this.appUtil.configuration.properties.last_trigger));
+                var re_trigger_gap = gs.getProperty(this.appUtil.configuration.properties.consent_re_trigger_gap);
+                last_trigger.addDaysLocalTime(re_trigger_gap);
+                var today = new GlideDateTime();
+                if (last_trigger == '' || today.onOrAfter(last_trigger)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getCustomerConsentProperty: Exception Block: consentPropVal property: ' + consentPropVal);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getCustomerConsentProperty " + e + ". Error found" + e.stack);
+        }
+    },
+
+    setCustomerConsentValueProperty: function() {
+        try {
+            this.appUtil = new CASAppUtil();
+            var names = [this.appUtil.configuration.properties.last_trigger, this.appUtil.configuration.properties.customer_concent_value, this.appUtil.configuration.properties.consent_provider];
+            var consentVal = this.getParameter('sysparm_value');
+            var sysProperties = new GlideRecord(this.appUtil.configuration.table.sys_properties);
+            sysProperties.addEncodedQuery("nameIN" + names);
+            sysProperties.query();
+            while (sysProperties.next()) {
+                if (sysProperties.name.toString() == this.appUtil.configuration.properties.last_trigger) {
+                    sysProperties.value = new GlideDateTime().toString();
+                }
+                CASLogger.debug('Inside  CSClientScriptBridge.setCustomerConsentValueProperty: consentPropVal: ' + consentVal);
+                if (consentVal == 'true' || consentVal == true || consentVal == 'false' || consentVal == false) {
+                    if (sysProperties.name.toString() == this.appUtil.configuration.properties.customer_concent_value) {
+                        sysProperties.value = consentVal;
+                    }
+                    if (sysProperties.name == this.appUtil.configuration.properties.consent_provider) {
+                        sysProperties.value = gs.getUserID().toString();
+                    }
+                }
+                sysProperties.update();
+            }
+            return true;
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.setCustomerConsentValueProperty: Exception Block: consentVal property: ' + consentVal);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.setCustomerConsentValueProperty " + e + ". Error found" + e.stack);
+        }
+    },
+
+    getDeploymentValue: function() {
+        try {
+            CASLogger.debug('Inside  vRACSClientSciptBridge.getDeploymentValue');
+            this.appUtil = new CASAppUtil();
+            var deployment;
+            var resource = this.getParameter('sysparm_resourceid');
+            var resourceGr = new GlideRecord(this.appUtil.configuration.table.machines);
+            if (resourceGr.get(resource)) {
+                deployment = resourceGr.deployment_sys;
+            }
+            return deployment;
+
+        } catch (e) {
+            CASLogger.error("Exception caught Inside vRACSClientSciptBridge.getDeploymentValue " + e + ". Error found" + e);
+        }
+    },
+
+    checkResource: function() {
+        try {
+            CASLogger.debug('Inside  vRACSClientSciptBridge.checkResource');
+            this.appUtil = new CASAppUtil();
+            var deployment = this.getParameter('sysparm_deploymentid');
+            var resource = this.getParameter('sysparm_resourceid');
+            var resourceGr = new GlideRecord(this.appUtil.configuration.table.machines);
+            resourceGr.addQuery('sys_id', resource);
+            resourceGr.addQuery('deployment_sys.sys_id', deployment);
+            resourceGr.query();
+            if (resourceGr.next()) {
+                return true;
+            }
+            return false;
+
+        } catch (e) {
+            CASLogger.error("Exception caught Inside vRACSClientSciptBridge.checkResource " + e + ". Error found" + e);
+        }
+    },
+
+    // Below function is used to check if the upfront Expense feature is enabled for not at VMware server.
+    checkUpfrontExpense: function() {
+        try {
+
+            this.appUtil = new CASAppUtil();
+            var catalogId = this.getParameter('sysparm_sys_id');
+            CASLogger.debug('Inside  CSClientScriptBridge.checkUpfrontExpense: catalogId: ' + catalogId);
+
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+            var catGr = new GlideRecord('x_vmw_cloudservice_cas_catalog_items');
+            catGr.addQuery('sys_id', catalogId);
+            catGr.query();
+            if (catGr.next()) {
+                if (catGr.organisation_name.select_automation_service == 'vRealiseAutomationCloud') {
+                    token = catGr.organisation_name.api_token.getDecryptedValue();
+                    endPoint = catGr.organisation_name.cas_url + '/price/api/features?feature=upfrontExpense';
+                    CASLogger.debug('Inside CSClientScriptBridge.checkUpfrontExpense: cloud endpoint: ' + endPoint);
+                }
+                if (catGr.organisation_name.select_automation_service == 'vrealizeAutomationService') {
+                    endPoint = catGr.organisation_name.hostname + '/price/api/features?feature=upfrontExpense';
+                    midserver = catGr.organisation_name.mid_server.name;
+                    token = catGr.organisation_name.api_token.getDecryptedValue();
+                    CASLogger.debug('Inside CSClientScriptBridge.checkUpfrontExpense: endpoint: ' + endPoint + ' midserver: ' + midserver);
+                }
+                var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+
+                CASLogger.debug('Inside CSClientScriptBridge.checkUpfrontExpense:---response: ' + response.getBody() + 'StatusCode :' + response.getStatusCode());
+                if (response.haveError()) {
+                    var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                    for (var s = 0; s < propertyStatus.length; s++) {
+                        if (propertyStatus[s] == response.getStatusCode()) {
+                            CASLogger.error('upfrontExpense::: Catalog upfrontExpense : ' + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSClientScriptBridge.checkUpfrontExpense):");
+                        } else {
+                            CASLogger.error('upfrontExpense::: Catalog upfrontExpense: ' + '\n endPoint: ' + endPoint + ' REST call error found inside CSClientScriptBridge.checkUpfrontExpense: ' + '\n Error found: ' + response.getErrorMessage());
+                        }
+                    }
+
+                    return false;
+                } else {
+                    this.daoUtil = new CASDaoUtil();
+                    var resBody = this.daoUtil.checkNull(response.getBody());
+                    if (resBody == false || resBody == 'false') {
+                        CASLogger.error('Inside null/empty if block of CSClientScriptBridge.checkUpfrontExpense: responseBody ' + response.getBody());
+                        return false;
+                    } else {
+                        var responseBody = response.getBody();
+                        var jsonResponse = this.appUtil.parse(responseBody);
+                        var upfrontExpense = jsonResponse.upfrontExpenseFeatureEnabled;
+                        CASLogger.debug('Inside else block of CSClientScriptBridge.checkUpfrontExpense: upfrontExpense enable/disable: ' + upfrontExpense);
+                        return upfrontExpense;
+                    }
+                }
+            }
+        } catch (e) {
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.checkUpfrontExpense " + e + ". Error found" + e.stack);
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.checkUpfrontExpense: Exception Block: catalogId: ' + catalogId + 'Body:' + body + 'response:' + response.getBody() + 'upfrontExpense enable/disable:' + upfrontExpense);
+        }
+    },
+
+    priceCatalogBody: function() {
+        try {
+            var catSysID = this.getParameter('sysparm_sys_id');
+            var catVersion = this.getParameter('sysparm_version');
+            CASLogger.debug('Inside  CSClientScriptBridge.priceCatalogBody: catalogId: ' + catSysID + 'version :' + catVersion);
+
+            var catVar = {};
+            catVar["variables"] = [];
+
+            var grvars = new GlideRecord('item_option_new');
+            grvars.addEncodedQuery('cat_item=' + catSysID.toString() + '^x_vmw_cloudservice_versions=' + catVersion.toString() + ',' + '^type!=20^type!=24^type!=19^nameNOT LIKEmacro_^type!=11');
+
+            grvars.query();
+            while (grvars.next()) {
+                catVar["variables"].push({
+                    "name": grvars.name + '',
+                    "org": grvars.x_vmw_cloudservice_vraorginalkeyname + '',
+                    "casData": grvars.x_vmw_cloudservice_datatype + '',
+                    "CasName": grvars.x_vmw_cloudservice_cas_name + '',
+                });
+            }
+            CASLogger.debug('Inside  CSClientScriptBridge.priceCatalogBody: catalog variables: ' + JSON.stringify(catVar));
+
+            return JSON.stringify(catVar);
+        } catch (e) {
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.priceCatalogBody " + e + ". Error found" + e.stack);
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.priceCatalogBody: Exception Block: catalogId: ' + catSysID + 'Catalog variables :' + JSON.stringify(catVar) + 'version :' + catVersion);
+        }
+    },
+
+    upfrontPriceId: function() {
+        try {
+            this.appUtil = new CASAppUtil();
+            var catalogId = this.getParameter('sysparm_sys_id');
+            var body = this.getParameter('sysparm_body');
+
+            CASLogger.debug('Inside  CSClientScriptBridge.upfrontPriceId: catalogId: ' + catalogId + 'Body :' + body);
+            var catUid;
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+            var upfrontPriceId;
+            var endpointGr;
+
+            var catGr = new GlideRecord('x_vmw_cloudservice_cas_catalog_items');
+            catGr.addQuery('sys_id', catalogId);
+            catGr.query();
+            if (catGr.next()) {
+                catUid = catGr.cas_uid;
+                endpointGr = catGr.organisation_name;
+
+                if (catGr.organisation_name.select_automation_service == 'vRealiseAutomationCloud') {
+                    token = catGr.organisation_name.api_token.getDecryptedValue();
+                    endPoint = catGr.organisation_name.cas_url + '/catalog/api/items/' + catUid + '/upfront-prices';
+                    CASLogger.debug('Inside CSClientScriptBridge.upfrontPriceId: cloud endpoint: ' + endPoint);
+                }
+                if (catGr.organisation_name.select_automation_service == 'vrealizeAutomationService') {
+                    endPoint = catGr.organisation_name.hostname + '/catalog/api/items/' + catUid + '/upfront-prices';
+                    midserver = catGr.organisation_name.mid_server.name;
+                    token = catGr.organisation_name.api_token.getDecryptedValue();
+                    CASLogger.debug('Inside CSClientScriptBridge.upfrontPriceId: endpoint: ' + endPoint + ' midserver: ' + midserver);
+                }
+                var response = this.appUtil.makeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", 'Bearer ' + token);
+
+                CASLogger.debug('Inside CSClientScriptBridge.upfrontPriceId:---response: ' + response.getBody() + 'StatusCode :' + response.getStatusCode());
+                if (response.haveError()) {
+                    var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                    for (var s = 0; s < propertyStatus.length; s++) {
+                        if (propertyStatus[s] == response.getStatusCode()) {
+                            CASLogger.error('upfrontExpense::: Catalog upfrontExpense: ' + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSClientScriptBridge.upfrontPriceId):");
+                        } else {
+                            CASLogger.error('upfrontExpense::: Catalog upfrontExpense: ' + '\n endPoint: ' + endPoint + ' REST call error found inside CSClientScriptBridge.upfrontPriceId: ' + '\n Error found: ' + response.getErrorMessage());
+                        }
+                    }
+
+                    return false;
+                } else {
+                    this.daoUtil = new CASDaoUtil();
+                    var resBody = this.daoUtil.checkNull(response.getBody());
+                    if (resBody == false || resBody == 'false') {
+                        CASLogger.error('Inside null/empty if block of CSClientScriptBridge.upfrontPriceId: responseBody ' + response.getBody());
+                        return false;
+                    } else {
+                        var responseBody = response.getBody();
+                        var obj = this.appUtil.parse(responseBody);
+                        upfrontPriceId = obj.upfrontPriceId;
+                        var priceDetails = this.getPriceDetails(upfrontPriceId, catUid, endpointGr);
+                        return priceDetails;
+                    }
+                }
+            }
+        } catch (e) {
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.upfrontPriceId " + e + ". Error found" + e.stack);
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.upfrontPriceId: Exception Block: catalogId: ' + catalogId + 'Body:' + body + 'response:' + response.getBody() + 'priceDetails:' + priceDetails);
+        }
+    },
+
+    getPriceDetails: function(upfrontPriceId, catUid, organisation) {
+
+        try {
+            CASLogger.debug('Inside CSClientScriptBridge.getPriceDetails: upfrontPriceId: ' + upfrontPriceId + 'catUid :' + catUid + 'organisation :' + organisation);
+            this.appUtil = new CASAppUtil();
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+
+
+            if (organisation.select_automation_service == 'vRealiseAutomationCloud') {
+                token = organisation.api_token.getDecryptedValue();
+                endPoint = organisation.cas_url + '/catalog/api/items/' + catUid + '/upfront-prices/' + upfrontPriceId;
+                CASLogger.debug('Inside CSClientScriptBridge.getPriceDetails: cloud endpoint: ' + endPoint);
+            }
+            if (organisation.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = organisation.hostname + '/catalog/api/items/' + catUid + '/upfront-prices/' + upfrontPriceId;
+                midserver = organisation.mid_server.name;
+                token = organisation.api_token.getDecryptedValue();
+                CASLogger.debug('Inside CSClientScriptBridge.getPriceDetails: endpoint: ' + endPoint + ' midserver: ' + midserver);
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+
+            CASLogger.debug('Inside CSClientScriptBridge.getPriceDetails:---response: ' + response.getBody() + 'Status code :' + response.getStatusCode());
+
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error('upfrontExpense  ::: Catalog upfrontExpense : ' + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSClientScriptBridge.getPriceDetails):");
+                    } else {
+                        CASLogger.error('upfrontExpense ::: Catalog upfrontExpense: ' + '\n endPoint: ' + endPoint + ' REST call error found inside CSClientScriptBridge.getPriceDetails: ' + '\n Error found: ' + response.getErrorMessage());
+                    }
+                }
+
+                return false;
+            } else {
+                this.daoUtil = new CASDaoUtil();
+                var resBody = this.daoUtil.checkNull(response.getBody());
+                if (resBody == false || resBody == 'false') {
+                    CASLogger.error('Inside null/empty if block of CSClientScriptBridge.getPriceDetails: responseBody ' + response.getBody());
+                    return false;
+                } else {
+
+                    var responseBody = response.getBody();
+                    var obj = this.appUtil.parse(responseBody);
+                    var status = obj.status;
+
+                    if (status == "ERROR") {
+                        CASLogger.error('Error found while calculating/updating the upfront price of Catalog : ' + catUid + '. Error message: ' + obj.statusDetails);
+                        return false;
+                    }
+                    if (status != "SUCCESS") {
+                        CASLogger.debug('Inside CSClientScriptBridge.getPriceDetails :: statusDetails:' + status);
+                        return this.getPriceDetails(upfrontPriceId, catUid, organisation);
+                    } else {
+                        return responseBody;
+                    }
+
+
+                }
+
+            }
+
+        } catch (e) {
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getPriceDetails " + e + ". Error found" + e.stack);
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getPriceDetails: Exception Block: upfrontPriceId: ' + upfrontPriceId + 'catUid:' + catUid + 'organisation:' + organisation + 'response:' + responseBody + 'status:' + status);
+        }
+    },
+
+    getPriceValues: function(catalog, bodyTemplate, project) {
+        try {
+            this.appUtil = new CASAppUtil();
+
+            CASLogger.debug('Inside  CSClientScriptBridge.getPriceValues: catalogId: ' + catalog + 'projectId :' + project + 'Body :' + bodyTemplate);
+            var catalogId = catalog;
+            var body = bodyTemplate;
+            var catUid = '';
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+            var upfrontPriceId;
+            var organisation;
+
+            var catGr = new GlideRecord('x_vmw_cloudservice_cas_catalog_items');
+            catGr.addQuery('sys_id', catalogId);
+            catGr.query();
+            if (catGr.next()) {
+                catUid = catGr.cas_uid;
+                organisation = catGr.organisation_name;
+
+                if (catGr.organisation_name.select_automation_service == 'vRealiseAutomationCloud') {
+                    token = catGr.organisation_name.api_token.getDecryptedValue();
+                    endPoint = catGr.organisation_name.cas_url + '/catalog/api/items/' + catUid + '/upfront-prices';
+                    CASLogger.debug('Inside CSClientScriptBridge.getPriceValues: cloud endpoint: ' + endPoint);
+                }
+                if (catGr.organisation_name.select_automation_service == 'vrealizeAutomationService') {
+                    endPoint = catGr.organisation_name.hostname + '/catalog/api/items/' + catUid + '/upfront-prices';
+                    midserver = catGr.organisation_name.mid_server.name;
+                    token = catGr.organisation_name.api_token.getDecryptedValue();
+                    CASLogger.debug('Inside CSClientScriptBridge.getPriceValues:  endpoint: ' + endPoint + ' midserver: ' + midserver);
+                }
+                var response = this.appUtil.makeApiCall(endPoint, 'post', body, midserver, "application/json", "application/json", 'Bearer ' + token);
+                CASLogger.debug('Inside CSClientScriptBridge.getPriceValues:---response: ' + response.getBody());
+
+                if (response.haveError()) {
+                    var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                    for (var s = 0; s < propertyStatus.length; s++) {
+                        if (propertyStatus[s] == response.getStatusCode()) {
+                            CASLogger.error('upfrontExpense ::: Catalog upfrontExpense: ' + '\n endPoint: ' + endPoint + '\n Error found: ' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSClientScriptBridge.getPriceValues):");
+                        } else {
+                            CASLogger.error('upfrontExpense ::: Catalog upfrontExpense: ' + '\n endPoint: ' + endPoint + ' REST call error found inside CSClientScriptBridge.getPriceValues: ' + '\n Error found: ' + response.getErrorMessage());
+                        }
+                    }
+
+                    return false;
+                } else {
+                    this.daoUtil = new CASDaoUtil();
+                    var resBody = this.daoUtil.checkNull(response.getBody());
+                    if (resBody == false || resBody == 'false') {
+                        CASLogger.error('Inside null/empty if block of CSClientScriptBridge.getPriceValues: responseBody ' + response.getBody());
+                        return false;
+                    } else {
+                        var responseBody = response.getBody();
+                        var obj = this.appUtil.parse(responseBody);
+                        upfrontPriceId = obj.upfrontPriceId;
+
+                        var priceDetails = this.getPriceDetails(upfrontPriceId, catUid, organisation);
+                        return priceDetails;
+                    }
+                }
+            }
+        } catch (e) {
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.getPriceValues " + e + ". Error found" + e.stack);
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.getPriceValues: Exception Block: catalogId: ' + catalog + 'Body:' + bodyTemplate + 'projectId:' + project + 'response:' + response.getBody() + 'priceDetails:' + priceDetails);
+
+        }
+    },
+
+    changeOwnerValue: function() {
+        try {
+
+            this.appUtil = new CASAppUtil();
+            this.daoUtil = new CASDaoUtil();
+            var depsysId = this.getParameter('sysparm_deployment_sys_id');
+            var depId = '';
+            var pageSize = gs.getProperty(this.appUtil.configuration.properties.apiPageSize);
+
+            CASLogger.debug('Inside CSClientScriptBridge.changeOwnerValue: deploymentsysId :- ' + depsysId);
+            var arr = '';
+            var endPoint, token, midserver, org = '';
+            var grDeps = new GlideRecord(this.appUtil.configuration.table.deployments);
+            if (grDeps.get(depsysId)) {
+                org = grDeps.u_project.organization;
+                depId = grDeps.deployment_id + '';
+            }
+
+            if (org.select_automation_service == 'vRealiseAutomationCloud') {
+                token = org.api_token.getDecryptedValue();
+                endPoint = org.cas_url + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeOwner/data/change-owner?page=0&size=' + pageSize + '&type=USER';
+                CASLogger.debug('Inside CSClientScriptBridge.changeOwnerValue: cloud endpoint: ' + endPoint);
+            }
+            if (org.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = org.hostname + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeOwner/data/change-owner?page=0&size=' + pageSize + '&type=USER';
+                midserver = org.mid_server.name;
+                token = org.api_token.getDecryptedValue();
+                CASLogger.debug('Inside CSClientScriptBridge.changeOwnerValue: endpoint: ' + endPoint + ' midserver: ' + midserver);
+
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside CSClientScriptBridge.changeOwnerValue:---response: ' + response);
+
+            if (response.haveError()) {
+                CASLogger.debug('REST call error found inside CSClientScriptBridge.changeOwnerValue: ' + response.getErrorMessage() + "Status code:" + response.getStatusCode());
+                return "false";
+            } else {
+                var responseBody = response.getBody();
+                var res = this.daoUtil.checkNull(responseBody);
+                if (res == false || res == 'false') {
+                    CASLogger.debug('Inside null/empty if block of CSClientScriptBridge.changeOwnerValue :responseBody: ' + responseBody);
+                    return "false";
+                } else {
+                    CASLogger.debug('Inside Else Block of CSClientScriptBridge.changeOwnerValue: ResponseBody: ' + responseBody);
+                    var answer = JSON.parse(responseBody);
+                    for (var i = 0; i < answer.content.length; i++) {
+                        if (typeof answer.content[i] == 'object') {
+                            arr += answer.content[i].id + ',';
+                        }
+                    }
+                    var pageElement = answer.totalPages;
+                    for (var j = 1; j <= pageElement; j++) {
+                        if (org.select_automation_service == 'vRealiseAutomationCloud') {
+                            token = org.api_token.getDecryptedValue();
+                            endPoint = org.cas_url + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeOwner/data/change-owner?page=' + j + '&size=' + pageSize + '&type=USER';
+                            CASLogger.debug('Inside CSClientScriptBridge.changeOwnerValue: cloud endpoint: ' + endPoint);
+                        }
+                        if (org.select_automation_service == 'vrealizeAutomationService') {
+                            endPoint = org.hostname + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeOwner/data/change-owner?page=' + j + '&size=' + pageSize + '&type=USER';
+                            midserver = org.mid_server.name;
+                            CASLogger.debug('Inside CSClientScriptBridge.changeOwnerValue: endpoint: ' + endPoint + ' midserver: ' + midserver);
+                            token = org.api_token.getDecryptedValue();
+                        }
+                        var response1 = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+                        if (response1.haveError()) {
+                            CASLogger.debug('REST call error found inside CSClientScriptBridge.changeOwnerValue: ' + response1.getErrorMessage() + "Status code:" + response1.getStatusCode());
+                            return "false";
+                        } else {
+                            var responseBody1 = response1.getBody();
+                            CASLogger.debug('Inside Else Block of CSClientScriptBridge.changeOwnerValue: ResponseBody1: ' + responseBody1);
+                            var answer = JSON.parse(responseBody1);
+                            for (var i = 0; i < answer.content.length; i++) {
+                                if (typeof answer.content[i] == 'object') {
+                                    arr += answer.content[i].id + ',';
+                                }
+                            }
+                        }
+                    }
+                }
+
+                var userName = [];
+                var grOwner = new GlideRecord("sys_user");
+                grOwner.addEncodedQuery('emailIN' + arr + '^ORuser_nameIN' + arr);
+                grOwner.query();
+                while (grOwner.next()) {
+
+                    if (org.select_automation_service == 'vrealizeAutomationService') {
+                        userName.push(grOwner.user_name + '');
+                    } else {
+                        userName.push(grOwner.email + '');
+                    }
+                }
+                CASLogger.debug('Inside CSClientScriptBridge.changeOwnerValue: UserList: ' + JSON.stringify(userName));
+                return JSON.stringify(userName);
+            }
+
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.changeOwnerValue: Exception Block: responseArray: ' + arr + ' deployment sysID :' + depsysId + ' deployment Id : ' + depId);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.changeOwnerValue " + e + ". Error found" + e.stack);
+        }
+    },
+
+    changeProjectValue: function() {
+
+        try {
+            this.appUtil = new CASAppUtil();
+            this.daoUtil = new CASDaoUtil();
+            var depsysId = this.getParameter('sysparm_deployment_sys_id');
+            var depId = '';
+            var pageSize = gs.getProperty(this.appUtil.configuration.properties.apiPageSize);
+
+            CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue: deploymentsysId :- ' + depsysId);
+            var arr = [];
+            var endPoint, token, midserver, org = '';
+            var grDeps = new GlideRecord(this.appUtil.configuration.table.deployments);
+            if (grDeps.get(depsysId)) {
+                org = grDeps.u_project.organization;
+                depId = grDeps.deployment_id + '';
+            }
+
+            if (org.select_automation_service == 'vRealiseAutomationCloud') {
+                token = org.api_token.getDecryptedValue();
+                endPoint = org.cas_url + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeProject/data/projects?page=0&size=' + pageSize;
+                CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue: cloud endpoint: ' + endPoint);
+            }
+            if (org.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = org.hostname + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeProject/data/projects?page=0&size=' + pageSize;
+                midserver = org.mid_server.name;
+                token = org.api_token.getDecryptedValue();
+                CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue: endpoint: ' + endPoint + ' midserver: ' + midserver);
+
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue:---response: ' + response.getBody());
+
+            if (response.haveError()) {
+                CASLogger.debug('REST call error found inside CSClientScriptBridge.changeProjectValue: ' + response.getErrorMessage() + "Status code:" + response.getStatusCode());
+                return "false";
+            } else {
+                var responseBody = response.getBody();
+                var res = this.daoUtil.checkNull(responseBody);
+                if (res == false || res == 'false') {
+                    CASLogger.debug('Inside null/empty if block of CSClientScriptBridge.changeProjectValue :responseBody: ' + responseBody);
+                    return "false";
+                } else {
+                    CASLogger.debug('Inside Else Block of CSClientScriptBridge.changeProjectValue: ResponseBody: ' + responseBody);
+                    var answer = JSON.parse(responseBody);
+                    for (var i = 0; i < answer.content.length; i++) {
+                        if (typeof answer.content[i] == 'object') {
+                            arr.push((answer.content[i]));
+                        }
+                    }
+                    var pageElement = answer.totalPages;
+                    for (var j = 1; j <= pageElement; j++) {
+                        if (org.select_automation_service == 'vRealiseAutomationCloud') {
+                            token = org.api_token.getDecryptedValue();
+                            endPoint = org.cas_url + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeProject/data/projects?page=' + j + '&size=' + pageSize;
+                            CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue: cloud endpoint: ' + endPoint);
+                        }
+                        if (org.select_automation_service == 'vrealizeAutomationService') {
+                            endPoint = org.hostname + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeProject/data/projects?page=' + j + '&size=' + pageSize;
+                            midserver = org.mid_server.name;
+                            CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue: endpoint: ' + endPoint + ' midserver: ' + midserver);
+                            token = org.api_token.getDecryptedValue();
+                        }
+                        var response1 = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+                        CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue:---response1: ' + response1.getBody());
+
+                        if (response1.haveError()) {
+                            CASLogger.debug('REST call error found inside CSClientScriptBridge.changeProjectValue: ' + response1.getErrorMessage() + "Status code:" + response1.getStatusCode());
+                            return "false";
+                        } else {
+                            var responseBody1 = response1.getBody();
+                            CASLogger.debug('Inside Else Block of CSClientScriptBridge.changeProjectValue: ResponseBody1: ' + responseBody1);
+                            var answer = JSON.parse(responseBody1);
+                            for (var i = 0; i < answer.content.length; i++) {
+                                if (typeof answer.content[i] == 'object') {
+                                    arr.push((answer.content[i]));
+                                }
+                            }
+                        }
+                    }
+
+                    var responseList = {
+                        content: arr
+                    };
+                    CASLogger.debug('Inside CSClientScriptBridge.changeProjectValue: responseArray :- ' + responseList);
+
+                    return JSON.stringify(responseList);
+                }
+            }
+        } catch (e) {
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.changeProjectValue " + e + ". Error found" + e.stack);
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.changeProjectValue: Exception Block: responseArray: ' + responseList + ' deployment sysID :' + depsysId + ' deployment Id : ' + depId);
+        }
+
+    },
+
+    changeProjectLeaseValue: function() {
+
+        try {
+            this.appUtil = new CASAppUtil();
+            this.daoUtil = new CASDaoUtil();
+            var depsysId = this.getParameter('sysparm_deployment_sys_id') + '';
+            var projectId = this.getParameter('sysparm_project_id') + '';
+            var depId = '';
+            CASLogger.debug('Inside CSClientScriptBridge.changeProjectLeaseValue: deploymentsysId :- ' + depsysId + " projectId :-" + projectId);
+            var endPoint, token, midserver, org = '';
+            var grDeps = new GlideRecord(this.appUtil.configuration.table.deployments);
+            if (grDeps.get(depsysId)) {
+                org = grDeps.u_project.organization;
+                depId = grDeps.deployment_id + '';
+            }
+
+            if (org.select_automation_service == 'vRealiseAutomationCloud') {
+                token = org.api_token.getDecryptedValue();
+                endPoint = org.cas_url + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeProject/data/policyChanges/' + projectId;
+                CASLogger.debug('Inside CSClientScriptBridge.changeProjectLeaseValue: cloud endpoint: ' + endPoint);
+            }
+            if (org.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = org.hostname + this.appUtil.configuration.api.deployment + depId + '/actions/Deployment.ChangeProject/data/policyChanges/' + projectId;
+                midserver = org.mid_server.name;
+                token = org.api_token.getDecryptedValue();
+                CASLogger.debug('Inside CSClientScriptBridge.changeProjectLeaseValue: endpoint: ' + endPoint + ' midserver: ' + midserver);
+
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug('Inside CSClientScriptBridge.changeProjectLeaseValue:---response: ' + response.getBody());
+
+            if (response.haveError()) {
+                CASLogger.debug('REST call error found inside CSClientScriptBridge.changeProjectLeaseValue: ' + response.getErrorMessage() + "Status code:" + response.getStatusCode());
+                return "false";
+            } else {
+                var responseBody = response.getBody();
+                var res = this.daoUtil.checkNull(responseBody);
+                if (res == false || res == 'false') {
+                    CASLogger.debug('Inside null/empty if block of CSClientScriptBridge.changeProjectLeaseValue :responseBody: ' + responseBody);
+                    return "false";
+                } else {
+                    CASLogger.debug('Inside Else Block of CSClientScriptBridge.changeProjectLeaseValue: ResponseBody: ' + responseBody);
+                    var answer = JSON.parse(responseBody);
+                    return responseBody;
+                }
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSClientScriptBridge.changeProjectLeaseValue: Exception Block: responseBody: ' + responseBody + ' Project ID :' + projectId + ' deployment Id : ' + depId);
+            CASLogger.error("Exception caught Inside CSClientScriptBridge.changeProjectLeaseValue " + e + ". Error found" + e.stack);
+        }
+    },
+
+    type: 'CSClientScriptBridge'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-08-26 11:56:53</sys_created_on>
+        <sys_id>f63ab6b4dbe333007b245385ca961985</sys_id>
+        <sys_mod_count>345</sys_mod_count>
+        <sys_name>CSClientScriptBridge</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_f63ab6b4dbe333007b245385ca961985</sys_update_name>
+        <sys_updated_by>Masoom.Khan</sys_updated_by>
+        <sys_updated_on>2024-12-11 09:27:30</sys_updated_on>
+    </sys_script_include>
+</record_update>

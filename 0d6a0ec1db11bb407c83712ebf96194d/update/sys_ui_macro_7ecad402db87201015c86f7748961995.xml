@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_macro">
+    <sys_ui_macro action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <category>general</category>
+        <description>/************************************************************&#13;
+* Copyright (c) 2021-2023 VMware, Inc. All Rights Reserved.&#13;
+* You may not use this product except in compliance with the License.&#13;
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.&#13;
+*************************************************************/</description>
+        <media_type/>
+        <name>CAS_Valuepicker_UI_Macro</name>
+        <scoped_name>x_vmw_cloudservice_CAS_Valuepicker_UI_Macro</scoped_name>
+        <sys_class_name>sys_ui_macro</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2021-03-23 13:34:26</sys_created_on>
+        <sys_id>7ecad402db87201015c86f7748961995</sys_id>
+        <sys_mod_count>68</sys_mod_count>
+        <sys_name>CAS_Valuepicker_UI_Macro</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_ui_macro_7ecad402db87201015c86f7748961995</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 12:30:28</sys_updated_on>
+        <xml><![CDATA[<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+	
+<style>
+	.cas_valuepicker_dropdown{
+		display: none;
+	}
+	
+	.cas_valuepicker_option_count_container{
+		width: 100%;
+		border: 1px solid #ccc;
+		padding: 10px;
+		border-top: none;
+		border-bottom-right-radius: 3px;
+		border-bottom-left-radius: 3px;
+	}
+	
+	.cas_valuepicker_visible{
+		display: block;
+	}
+	
+	.cas_valuepicker_hidden{
+		display: none;
+	}
+	
+	.cas_valuepicker_option{
+		padding: 5px 10px;
+		border-bottom: 1px solid #f6f6f6;
+	}
+	
+	.cas_valuepicker_option:hover{
+		background-color: lightgray;
+	}
+	
+	.cas_valuepicker div:focus{
+		outline: none;
+	}
+	
+	[tabindex="0"]:focus{
+		outline: none;
+	}
+	
+</style>
+	
+<div style="100%" id="value_picker" class="cas_valuepicker" tabindex="0">
+	<div class="input-group">
+		<input class="form-control" id="value_picker_input" placeholder="Search Here" />
+		<span class="input-group-btn">
+			<button type="button" class="btn btn-default" title="" data-original-title="" id="clear_button" style="background:#eeeeee">
+				<span class="icon icon-cross-circle" aria-hidden="true"></span>
+			</button>
+			<button type="button" class="btn btn-default" title="" data-original-title="" id="search_button" style="background:#eeeeee">
+				<span class="icon icon-arrow-right" aria-hidden="true"></span>
+			</button>
+		</span>
+	</div>
+	<div id="valuepicker_dropdown" class="cas_valuepicker_dropdown">
+		<div style="width: 100%;border: 1px solid lightgray;max-height:200px;overflow-y:auto;z-index:10000;" class="option_container" id="options_container">
+		</div>
+		<div class="cas_valuepicker_option_count_container" id="option_count_container">
+		</div>
+	</div>
+	
+	<input type="text" class="cas_valuepicker_hidden" id="answer_container" />
+	<input type="text" class="cas_valuepicker_hidden" id="constraint_container" />
+</div>
+	
+	
+</j:jelly>
+]]></xml>
+    </sys_ui_macro>
+</record_update>

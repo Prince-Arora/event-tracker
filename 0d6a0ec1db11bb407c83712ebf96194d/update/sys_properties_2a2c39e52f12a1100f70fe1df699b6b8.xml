@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_properties">
+    <sys_properties action="INSERT_OR_UPDATE">
+        <choices/>
+        <description>This System Property is for VMware Aria Automation Plugin.&#13;
+&#13;
+The job queue will stop processing jobs for the specified number of minutes when receives 429 statuscode, and those minutes will be stored in this system property.&#13;
+The default value is set to  1.</description>
+        <ignore_cache>true</ignore_cache>
+        <is_private>false</is_private>
+        <name>x_vmw_cloudservice.rateLimitHaltTime</name>
+        <read_roles/>
+        <suffix>rateLimitHaltTime</suffix>
+        <sys_class_name>sys_properties</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2023-04-19 09:23:08</sys_created_on>
+        <sys_id>2a2c39e52f12a1100f70fe1df699b6b8</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>x_vmw_cloudservice.rateLimitHaltTime</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_properties_2a2c39e52f12a1100f70fe1df699b6b8</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-05-02 11:28:43</sys_updated_on>
+        <type>integer</type>
+        <value>1</value>
+        <write_roles/>
+    </sys_properties>
+    <sys_translated_text action="delete_multiple" query="documentkey=2a2c39e52f12a1100f70fe1df699b6b8"/>
+</record_update>

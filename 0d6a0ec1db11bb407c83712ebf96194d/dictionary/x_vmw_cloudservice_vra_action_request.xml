@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="3bef5f901bb3b300e61b21b6bc4bcbe3" label="Day-2 Action Request" max_length="40" name="x_vmw_cloudservice_vra_action_request" type="collection">
+        <element label="Description" max_length="700" name="description" type="string"/>
+        <element label="Requested By" max_length="50" name="requestedby" type="string"/>
+        <element label="Body" max_length="1000000000" name="body" type="string"/>
+        <element label="Request ID" max_length="50" name="request_id" type="string"/>
+        <element label="Domain" max_length="32" name="sys_domain" type="domain_id"/>
+        <element label="Deployment " max_length="100" name="u_name" type="string"/>
+        <element label="Status" max_length="20" name="status" type="string"/>
+        <element label="Resource" max_length="100" name="u_name_resource" type="string"/>
+        <element label="Requester" max_length="50" name="requester" type="string"/>
+        <element attributes="edge_encryption_enabled=true" label="Action" max_length="32" name="action" reference="x_vmw_cloudservice_vra_cloud_actions" type="reference"/>
+        <element label="Comment" max_length="1024" name="comment" type="string"/>
+        <element label="Reason" max_length="700" name="reason" type="string"/>
+        <element label="Action Name" max_length="50" name="action_name" type="string"/>
+        <element label="State" max_length="50" name="state" type="string"/>
+        <element label="Endpoint" max_length="100" name="u_endpoint" type="string"/>
+        <index name="index">
+            <element name="action"/>
+        </index>
+        <index name="index2">
+            <element name="sys_domain"/>
+        </index>
+    </element>
+</database>

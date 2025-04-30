@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_fix">
+    <sys_script_fix action="INSERT_OR_UPDATE">
+        <before>false</before>
+        <description>This Fix Script is for VMware Aria Automation Plugin.&#13;
+&#13;
+Please uncomment the code before executing this fix script.&#13;
+&#13;
+This fix script is used to delete the datagrid  variable set after ITSM 8.13.1  . The next import will recreate them.&#13;
+</description>
+        <name>delete datagrid variable set </name>
+        <record_for_rollback>true</record_for_rollback>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2021-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+//var var_gr = new GlideRecord('item_option_new_set');
+//var_gr.addEncodedQuery('sys_scope=0d6a0ec1db11bb407c83712ebf96194d^sys_id!=fa9d2393dbc333007b245385ca96198b^sys_id!=e9e7bd89db935010ca597b3868961900^sys_id!=50000b4ddb575010ca597b386896199b');
+//var_gr.query();
+//while(var_gr.next()){
+ //   var varset = new sn_sc.CatalogItemVariableSet(var_gr.sys_id); 
+   // varset.deleteRecord(true);
+//}]]></script>
+        <sys_class_name>sys_script_fix</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2023-09-04 10:00:22</sys_created_on>
+        <sys_id>fb00f80a9785b1104958bc400153afa8</sys_id>
+        <sys_mod_count>4</sys_mod_count>
+        <sys_name>delete datagrid variable set </sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_fix_fb00f80a9785b1104958bc400153afa8</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-09-15 07:19:28</sys_updated_on>
+        <unloadable>false</unloadable>
+    </sys_script_fix>
+</record_update>

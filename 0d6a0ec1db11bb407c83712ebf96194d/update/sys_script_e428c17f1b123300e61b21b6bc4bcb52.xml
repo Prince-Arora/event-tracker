@@ -1,0 +1,639 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="sys_script">
+    <sys_script action="INSERT_OR_UPDATE">
+        <abort_action>false</abort_action>
+        <access>package_private</access>
+        <action_delete>false</action_delete>
+        <action_insert>true</action_insert>
+        <action_query>false</action_query>
+        <action_update>true</action_update>
+        <active>true</active>
+        <add_message>false</add_message>
+        <advanced>true</advanced>
+        <change_fields>false</change_fields>
+        <client_callable>false</client_callable>
+        <collection>x_vmw_cloudservice_cas_queue</collection>
+        <condition>current.state=='Processing'</condition>
+        <description/>
+        <execute_function>false</execute_function>
+        <filter_condition/>
+        <is_rest>false</is_rest>
+        <message/>
+        <name>Queue Data Load</name>
+        <order>100</order>
+        <priority>100</priority>
+        <rest_method/>
+        <rest_method_text/>
+        <rest_service/>
+        <rest_service_text/>
+        <rest_variables/>
+        <role_conditions/>
+        <script><![CDATA[/**************************************************************
+ * Copyright (c) 2019-2023 VMware, Inc. All Rights Reserved.
+ * You may not use this product except in compliance with the License.
+ * This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+ ***************************************************************/
+
+//Change the condition from 'Ready' to 'Processing'
+
+(function executeRule(current, previous /*null when async*/ ) {
+
+    try {
+        //QUEUE TABLE.
+        var appUtil = new CASAppUtil();
+        var topic = current.topic + '';
+        var retryMax = gs.getProperty('x_vmw_cloudservice.topic_retry_count');
+        //current.state="Processing";
+        //current.update();
+        var callScriptInclude = "";
+        var callFunction = "";
+        switch (topic) {
+
+
+            case 'DeploymentCreate':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.createDeploymentPull(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else if (callFunction == false) {
+                    current.state = "Error";
+                    current.retry_count++;
+                } //retutn : exceptionError
+                else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'ResourceCreate':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.createResourcePull(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else if (callFunction == false) {
+                    current.state = "Error";
+                    current.retry_count++;
+                } //retutn : exceptionError
+                else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'DeploymentDelete':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.DeploymentDelete(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+            case 'ResourceDelete':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.ResourceDelete(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'CustomActionDeployment':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.CustomActionDeployment(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else if (callFunction == false) {
+                    current.state = "Error";
+                    current.retry_count++;
+                } //retutn : exceptionError
+                else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'CreateUpdateAction':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.customActionUpdate(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else if (callFunction == false) {
+                    current.state = "Error";
+                    current.retry_count++;
+                } //retutn : exceptionError
+                else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+                break;
+
+            case 'DeleteAction':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.DeleteAction(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'StartImportProject':
+                var retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new EndpointRegister();
+                    callFunction = callScriptInclude.getProjectDetails(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+                break;
+
+            case 'StartedImportProject':
+
+                callScriptInclude = new EndpointRegister();
+                callFunction = callScriptInclude.parseProject(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+                break;
+
+            case 'ParseProject':
+                callScriptInclude = new CASDaoUtil();
+                callFunction = callScriptInclude.createProject(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'ReconcileImportProject':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new EndpointRegister();
+                    callFunction = callScriptInclude.reconcileProject(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+                break;
+
+
+            case 'StartImportCatalog':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new CatalogImport();
+                    callFunction = callScriptInclude.preImportCatalog(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+                break;
+
+            case 'ScheduledImportCatalog':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new CatalogImport();
+                    callFunction = callScriptInclude.preImportCatalogSchedule(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+                break;
+
+
+            case 'PreImportCatalog':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new CatalogImport();
+                    callFunction = callScriptInclude.importCatalog(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+                break;
+
+
+            case 'processCatalogCustomFormSchema':
+                callScriptInclude = new CatalogImport();
+                //callFunction=callScriptInclude.processCatalogCustomFormSchema(current);
+                current.state = "Completed";
+                break;
+
+            case 'ImportCatalog':
+                callScriptInclude = new CatalogImport();
+                callFunction = callScriptInclude.processCASCatalog(current);
+                if (callFunction == "update") {
+                    callScriptInclude.updateCatalog(current);
+                    current.state = "Completed";
+                } else if (callFunction == "create") {
+                    callScriptInclude.createCatalog(current);
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+                break;
+
+            case 'ReconcileImportCatalog':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new CatalogImport();
+                    callFunction = callScriptInclude.reconcileCatalogItem(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+                break;
+
+            case 'StartImportCMDB':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new ImportStart();
+                    callFunction = callScriptInclude.StartImportCMDB(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                        if (current.response.toString().startsWith('DeltaSync')) {
+                            gs.setProperty(appUtil.configuration.properties.deployments_last_sync, gs.getProperty(appUtil.configuration.properties.delta_trigger_time));
+                        }
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //return : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+
+                break;
+
+
+            case 'IndivImportCMDB':
+                callScriptInclude = new ImportStart();
+                //callFunction=callScriptInclude.parseIndivCMDB(current);
+                callFunction = callScriptInclude.insertCMDB(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+
+                //createCMDB
+            case 'createCMDB':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.insertCMDB(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+
+            case 'insertCMDB':
+                callScriptInclude = new createCMDB();
+                callFunction = callScriptInclude.insertDeploymentData(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+
+                }
+
+                break;
+
+            case 'preImportResource':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+
+                    callScriptInclude = new ImportStart();
+                    callFunction = callScriptInclude.preImportResource(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+
+                break;
+
+            case 'parseResource':
+                callScriptInclude = new ImportStart();
+                //callFunction = callScriptInclude.parseResource(current);
+                callFunction = callScriptInclude.insertResource(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+                /*   'createResource' topic is combined with the 'parseResource' topic. so commenting out this code. */
+
+                //            case 'createResource':
+                //                 callScriptInclude = new ImportStart();
+                //                 callFunction = callScriptInclude.insertResource(current);
+                //                 current.state = "Completed";
+                //                 break;
+
+
+            case 'reconcileCMDBDeployments':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new ImportStart();
+                    callFunction = callScriptInclude.reconcileCMDBDeployments(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+                break;
+
+
+            case 'startImportActionForDeployment':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new ImportStart();
+                    callFunction = callScriptInclude.startImportActionForDeployment(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+
+                break;
+
+            case 'parseActionForDeployment':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.parseActionForDeployment(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'parseActionSchemaForDeployment':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.createItemOptionNew(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+
+            case 'startImportActionForResource':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new ImportStart();
+                    callFunction = callScriptInclude.startImportActionForResource(current);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+
+                break;
+
+            case 'parseActionForResource':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.parseActionForResource(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+
+                break;
+
+            case 'parseActionSchemaForResource':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.createItemOptionNew(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                }
+
+                break;
+
+            case 'actionSchema':
+                callScriptInclude = new ImportStart();
+                callFunction = callScriptInclude.parseActionSchema(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                    current.retry_count = retryMax;
+                }
+                break;
+
+            case 'makeActionSchemaCalls':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new ImportStart();
+                    callFunction = callScriptInclude.insertActionVariables(current.day_2_record, current.request);
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else {
+                        current.state = "Error";
+                        current.retry_count++;
+                    }
+                }
+                break;
+
+            case 'reconcileActions':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new CASDaoUtil();
+                    callFunction = callScriptInclude.reconcileActions();
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+
+                break;
+				
+				case 'reconcileActionsDep':
+                retryCount = current.retry_count;
+                if (retryCount < retryMax) {
+                    callScriptInclude = new CASDaoUtil();
+                    callFunction = callScriptInclude.reconcileActionsDep();
+                    if (callFunction == true) {
+                        current.state = "Completed";
+                    } else if (callFunction == false) {
+                        current.state = "Error";
+                        current.retry_count++;
+
+                    } //retutn : exceptionError
+                    else {
+                        current.state = "Error";
+                        current.retry_count = retryMax;
+                    }
+                }
+
+                break;
+				
+				
+            case 'actionForEndpoint':
+                callScriptInclude = new CASDaoUtil();
+                callFunction = callScriptInclude.actionForEndpoint(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                }
+                break;
+
+            case 'deleteDuplicateVariables':
+                callScriptInclude = new CASDaoUtil();
+                callFunction = callScriptInclude.deleteDuplicate(current);
+                if (callFunction == true) {
+                    current.state = "Completed";
+                } else {
+                    current.state = "Error";
+                }
+                break;
+        }
+        if (current.retry_count == retryMax) {
+            new RetryFailedTopics().createRetryTopic(current);
+            new RetryFailedTopics().createIncidentForFailedTopic(current);
+        }
+        current.update();
+    } catch (e) {
+        CASLogger.error("Exception caught inside Queue Data Load Business rule" + e + " Error found: " + e.stack);
+        current.state = "Error";
+        current.response = e.stack;
+        current.retry_count = gs.getProperty('x_vmw_cloudservice.topic_retry_count');
+        current.update();
+    }
+
+})(current, previous);]]></script>
+        <sys_class_name>sys_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-07-04 08:10:18</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>e428c17f1b123300e61b21b6bc4bcb52</sys_id>
+        <sys_mod_count>147</sys_mod_count>
+        <sys_name>Queue Data Load</sys_name>
+        <sys_overrides/>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_e428c17f1b123300e61b21b6bc4bcb52</sys_update_name>
+        <sys_updated_by>Masoom.Khan</sys_updated_by>
+        <sys_updated_on>2024-12-10 10:08:35</sys_updated_on>
+        <template/>
+        <when>async</when>
+    </sys_script>
+    <sys_translated_text action="delete_multiple" query="documentkey=e428c17f1b123300e61b21b6bc4bcb52"/>
+</record_update>

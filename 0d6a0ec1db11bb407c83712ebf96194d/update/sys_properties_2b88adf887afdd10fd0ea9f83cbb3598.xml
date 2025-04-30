@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_properties">
+    <sys_properties action="INSERT_OR_UPDATE">
+        <choices/>
+        <description>This system property stores the value of Production or stagging URL for telemetry data collection.&#13;
+1. When you are using Production instance make sure the value must be for prduction URL :-  https://scapi.vmware.com/sc/api/collectors/&#13;
+&#13;
+2. When you are using development instance or testing instance make sure value must be for stagging URL :- https://scapi-stg.vmware.com/sc/api/collectors/</description>
+        <ignore_cache>true</ignore_cache>
+        <is_private>false</is_private>
+        <name>x_vmw_cloudservice.telemetry_Collector_Url</name>
+        <read_roles/>
+        <suffix>telemetry_Collector_Url</suffix>
+        <sys_class_name>sys_properties</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2022-12-01 07:12:41</sys_created_on>
+        <sys_id>2b88adf887afdd10fd0ea9f83cbb3598</sys_id>
+        <sys_mod_count>5</sys_mod_count>
+        <sys_name>x_vmw_cloudservice.telemetry_Collector_Url</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_properties_2b88adf887afdd10fd0ea9f83cbb3598</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2022-12-09 12:34:15</sys_updated_on>
+        <type>string</type>
+        <value>https://scapi-stg.vmware.com/sc/api/collectors/</value>
+        <write_roles/>
+    </sys_properties>
+    <sys_translated_text action="delete_multiple" query="documentkey=2b88adf887afdd10fd0ea9f83cbb3598"/>
+</record_update>

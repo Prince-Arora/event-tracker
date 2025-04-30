@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_transform_script">
+    <sys_transform_script action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <map display_value="VMware Aria Automation Web Service Import Set">bad40cab9763211059b4b857f053afd6</map>
+        <order>100</order>
+        <script><![CDATA[(function runTransformScript(source, map, log, target /*undefined onStart*/ ) {
+
+    /***************************************************************
+     * Copyright (c) 2023 VMware, Inc. All Rights Reserved.
+     * You may not use this product except in compliance with the License.
+     * This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+     *************************************************************/
+    try {
+        var schema = JSON.parse(source.schema);
+        var addTopic = new CASDaoUtil();
+        var appUtil = new CASAppUtil();
+        var deploymentId = schema.deploymentId;
+        var organization = schema.orgId;
+        var organizationId = '';
+        var org = new GlideRecord(appUtil.configuration.table.register_cas);
+        org.addQuery('u_organization_id', organization);
+        org.query();
+        if (org.next()) {
+            organizationId = org.sys_id;
+        }
+
+        if ((schema.requestType == 'BLUEPRINT' || schema.requestType == 'CATALOG') && (schema.eventType == 'CREATE_DEPLOYMENT' || schema.eventType == 'UPDATE_DEPLOYMENT')) {
+            addTopic.insert("DeploymentCreate", '', deploymentId, organizationId);
+        }
+        if ((schema.requestType == 'BLUEPRINT' || schema.requestType == 'CATALOG') && schema.eventType == 'DESTROY_DEPLOYMENT') {
+            if (schema.status == "FINISHED") {
+                addTopic.insert("DeploymentDelete", deploymentId, 'delete', organizationId);
+            } else {
+                addTopic.insert("DeploymentCreate", '', deploymentId, organizationId);
+
+            }
+        }
+        if ((schema.requestType == 'BLUEPRINT' || schema.requestType == 'CATALOG') && (schema.eventType == 'CREATE_RESOURCE' || schema.eventType == 'UPDATE_RESOURCE')) {
+            addTopic.insert("ResourceCreate", deploymentId, schema.id, organizationId);
+
+        }
+        if ((schema.requestType == 'BLUEPRINT' || schema.requestType == 'CATALOG') && schema.eventType == 'DELETE_RESOURCE') {
+            if (schema.status == "FINISHED") {
+                addTopic.insert("ResourceDelete", deploymentId, schema.id, organizationId);
+            } else {
+                addTopic.insert("preImportResource", deploymentId, '', organizationId);
+
+            }
+        }
+        if (schema.requestType == 'DEPLOYMENT_ACTION') {
+            if (!schema.actionInputs) {
+                addTopic.insert("DeploymentCreate", '', deploymentId, organizationId);
+            }
+
+        }
+        if (schema.requestType == 'DEPLOYMENT_RESOURCE_ACTION') {
+
+            if (schema.actionName == "Delete" && schema.status == "FINISHED") {
+                addTopic.insert("ResourceDelete", deploymentId, schema.id, organizationId);
+            } else {
+                if (schema.actionName == 'PowerOn' || schema.actionName == 'PowerOff') {
+                    addTopic.insert("DeploymentCreate", '', deploymentId, organizationId);
+                }
+                addTopic.insert("ResourceCreate", deploymentId, schema.id, organizationId);
+            }
+
+        }
+        if (!((schema.requestType == 'DEPLOYMENT_ACTION' || schema.requestType == 'DEPLOYMENT_RESOURCE_ACTION' || (schema.requestType == 'BLUEPRINT' || schema.requestType == 'CATALOG')) && schema.eventType)) {
+            var obj = {
+                "id": schema.id,
+                "project": schema.projectId != undefined ? schema.projectId : undefined,
+            };
+            if (schema.operation == 'create/update' || schema.operation == 'create_update_resource_action') {
+
+                addTopic.insert("CreateUpdateAction", schema.resourceType, JSON.stringify(obj), organizationId);
+            }
+            if (schema.operation == 'delete' || schema.operation == 'delete_resource_action') {
+                addTopic.insert("DeleteAction", schema.resourceType, JSON.stringify(obj), organizationId);
+            }
+        }
+        addTopic.checkThreadLimit();
+
+    } catch (e1) {
+        CASLogger.error("Exception caught Inside onAfter Script of event Transform map: " + e1 + ". Error found " + e1.stack);
+    }
+
+    ignore = true;
+
+
+})(source, map, log, target);]]></script>
+        <sys_class_name>sys_transform_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2023-06-26 09:21:41</sys_created_on>
+        <sys_id>b558c4af9763211059b4b857f053af36</sys_id>
+        <sys_mod_count>32</sys_mod_count>
+        <sys_name>onAfter</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_transform_script_b558c4af9763211059b4b857f053af36</sys_update_name>
+        <sys_updated_by>Masoom.Khan</sys_updated_by>
+        <sys_updated_on>2024-12-11 09:20:21</sys_updated_on>
+        <when>onAfter</when>
+    </sys_transform_script>
+</record_update>

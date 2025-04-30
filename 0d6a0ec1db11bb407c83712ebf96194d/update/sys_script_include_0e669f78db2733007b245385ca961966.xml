@@ -1,0 +1,981 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.CSRequestUtil</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description/>
+        <name>CSRequestUtil</name>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2019-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var CSRequestUtil = Class.create();
+CSRequestUtil.prototype = {
+    initialize: function() {
+        this.appUtil = new CASAppUtil();
+        this.daoUtil = new CASDaoUtil();
+        this.createCMDB = new createCMDB();
+    },
+    /*
+        Function Name: requestCatalog
+        Comments: This function use to Catalog request Submission.
+        Updated On: 20 Dec 2021, 20 June 2021, 22 November 2022
+        Updated By: Shivam Goyal, Prajakta Kamble
+        Update Comments: Catalog request submission fails, will auto-retry the API call 3 times.
+		Prajakta Updates : Changed the condition for descrition field value in template. Added changes for creating body for custom properties and property gorups.
+        */
+	requestCatalog: function(current) {
+		try {
+			var servicenow_req_info = this.appUtil.getServicenowRequestInfo(current);
+			var midserver = '';
+			var endPoint = '';
+			var token = '';
+			var catalogId = current.cat_item.cas_uid;
+			CASLogger.debug('Inside the CSRequestUtil.requestCatalog: CatalogID: ' + catalogId);
+			var input = [];
+			var input1 = {};
+			var store_template = [];
+			var store_catalogBody = [];
+			var variableString = '';
+			store_catalogBody = this.createCatalogBody(current, input, input1, store_catalogBody);
+			
+			input = store_catalogBody[0];
+			variableString = store_catalogBody[1];
+			
+			var inputjson = this.appUtil.arrToJSON(input);
+			var inputjson1 = this.appUtil.parse(inputjson);
+			
+			// CASLogger.debug('Inside While Block of CSRequestUtil.requestCatalog : input:  ' + input);
+
+			var template = '{"deploymentName": "", "inputs": {},"projectId": "", "reason": ""}';
+			CASLogger.debug('Inside the CSRequestUtil.requestCatalog: inputjson: ' + inputjson + ' template: ' + template);
+			var parsedTemplate = this.appUtil.parse(template);
+
+			parsedTemplate.inputs = inputjson1;
+			
+			if(current.variables.upfront_price != ''){
+				variableString += "Daily Price Estimate" + ' :-- ' + current.variables.upfront_price + '@#@';
+			}
+
+			var hasVersion = false;
+			if (!((current.variables.u_version + '') == '' || (current.variables.u_version + '') == 'null' || (current.variables.u_version + '') == 'undefined')) {
+				hasVersion = true;
+				parsedTemplate.version = current.variables.u_version + '';
+				variableString += "Version" + ' :-- ' + current.variables.u_version + '@#@';
+
+			}
+
+			if (current.variables.u_deployment_name == '') {
+
+				if (hasVersion) {
+					var vers = current.variables.u_version + '';
+					var versRegx = new RegExp('[^a-zA-Z0-9]', 'g');
+					var depName = 'deploymentName__' + vers.replace(versRegx, ' ').trim().replaceAll(' ', '_');
+					parsedTemplate.deploymentName = current.variables[depName] + '';
+					//variableString += "Deployment Name" + ' :-- ' + current.variables[depName] + '@#@';
+				} else {
+					parsedTemplate.deploymentName = current.variables.deploymentName + '';
+					//variableString += "Deployment Name" + ' :-- ' + current.variables.deploymentName + '@#@';
+				}
+			} else {
+				parsedTemplate.deploymentName = current.variables.u_deployment_name + '';
+				variableString += "Deployment Name" + ' :-- ' + current.variables.u_deployment_name + '@#@';
+			}
+
+			if (hasVersion) {
+				var vers = current.variables.u_version + '';
+				var versRegx = new RegExp('[^a-zA-Z0-9]', 'g');
+				var desc = 'description__' + vers.replace(versRegx, ' ').trim().replaceAll(' ', '_');
+				if (!(current.variables[desc] == '' || current.variables[desc] == 'undefined' || current.variables[desc] == undefined)) {
+					parsedTemplate.reason = current.variables[desc] + '';
+				}
+
+			} else {
+				if (!(current.variables.description == '' || current.variables.description == 'undefined' || current.variables.description == undefined)) {
+					parsedTemplate.reason = current.variables.description + '';
+				}
+
+			}
+
+			parsedTemplate.projectId = current.variables.u_project + '';
+			variableString += "ProjectId" + ' :-- ' + current.variables.u_project + '@#@';
+			//parsedTemplate.reason = current.variables.u_description + '';
+
+			store_template = this.createCatalogTemplate(current, parsedTemplate, variableString, store_template);
+			
+			parsedTemplate = store_template[0];
+			variableString = store_template[1];
+			
+			parsedTemplate.inputs.servicenow_information = servicenow_req_info;  //Sending RITM and Requester's data in Input Variable. VSNOW-3157
+			
+			parsedTemplate.inputs = this.inputs_merge(parsedTemplate.inputs, input1);
+
+			CASLogger.debug('Inside the CSRequestUtil.requestCatalog: parsedTemplate: ' + JSON.stringify(parsedTemplate));
+			var template1 = JSON.stringify(parsedTemplate);
+			var VariablePool = variableString.split("@#@");
+			var VariableData = '';
+			for (var i = 0; i < VariablePool.length; i++) {
+				VariableData = VariableData + VariablePool[i] + "\n";
+			}
+			current.variables.variable_details = VariableData;
+			//for cas
+			if (current.cat_item.organisation_name.select_automation_service == 'vRealiseAutomationCloud') {
+				endPoint = current.cat_item.organisation_name.cas_url + this.appUtil.configuration.api.catalogItem + "/" + catalogId + "/request";
+
+				if (current.cat_item.organisation_name.use_oauth) {
+					token = this.getOAuthAccessToken(current);
+				} else {
+					token = current.cat_item.organisation_name.api_token.getDecryptedValue();
+				}
+				CASLogger.debug('Inside CSRequestUtil.requestCatalog: cloud endpoint:' + endPoint + ' token:' + token);
+			}
+			if (current.cat_item.organisation_name.select_automation_service == 'vrealizeAutomationService') {
+				endPoint = current.cat_item.organisation_name.hostname + this.appUtil.configuration.api.catalogItem + "/" + catalogId + "/request";
+
+				midserver = current.cat_item.organisation_name.mid_server.name;
+				token = current.cat_item.organisation_name.api_token.getDecryptedValue();
+				CASLogger.debug('Inside CSRequestUtil.requestCatalog: cloud endpoint:' + endPoint + ' midserver: ' + midserver + ' token:' + token);
+
+			}
+			var result = {
+				"state": '',
+				"comments": ''
+			};
+			var response1 = this.appUtil.makeApiCall(endPoint, 'post', template1, midserver, "application/json", "application/json", 'Bearer ' + token);
+			var recall = 3;
+			var submit = 'true';
+			if(response1 == "com.glide.ecc.ECCResponseTimeoutException"){
+				result.comments = 'Error occured while submitting Catalog Request: ECCResponseTimeoutException' ;
+				result.state ='4';
+				return result;
+			}
+			if (response1.haveError()) {
+				submit = 'false';
+				while (recall != 0) {
+					response1 = this.appUtil.makeApiCall(endPoint, 'post', template1, midserver, "application/json", "application/json", 'Bearer ' + token);
+					if (response1.haveError()) {
+						recall--;
+					} else {
+						submit = 'true';
+						break;
+					}
+
+				}
+			}
+			CASLogger.info("Inside CSRequestUtil.requestCatalog: Request submitted with Request Number: " + current.request.number +", RITM Number: "+ current.number +" and Status code: "+ response1.getStatusCode());
+			if (submit == 'false') {
+				var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+				for (var s = 0; s < propertyStatus.length; s++) {
+					if (propertyStatus[s] == response1.getStatusCode()) {
+						CASLogger.error(this.appUtil.timeOutMessage(response1.getStatusCode()) + ":(CSRequestUtil.requestCatalog):" + endPoint);
+						result.state = '4';
+						result.comments = 'Error occured while submitting Catalog Request.\nError: ' + this.appUtil.timeOutMessage(response1.getStatusCode()) + ":(CSRequestUtil.requestCatalog):" + endPoint;
+
+					} else {
+						CASLogger.error("Error occured while submitting Catalog Request inside CSRequestUtil.requestCatalog.");
+						if (response1.getStatusCode() == '401') {
+							result.comments = 'Error occured while submitting Catalog Request.\nError: ' + response1.getErrorMessage();
+						} else {
+							result.comments = 'Error occured while submitting Catalog Request.\nError: ' + response1.getBody();
+						}
+						result.state = '4';
+					}
+				}
+
+				return result;
+			}
+			if (submit == 'true') {
+				var catalogResponse = response1.getBody();
+				var res = this.daoUtil.checkNull(catalogResponse);
+				if (res == false || res == 'false') {
+					CASLogger.error('Inside null/empty if block of CSRequestUtil.requestCatalog: ' + catalogResponse);
+				} else {
+					CASLogger.debug('Inside Else block of response1.haveError(): CSRequestUtil.requestCatalog: catalogResponse: ' + catalogResponse);
+					var parsedResponse = this.appUtil.parse(catalogResponse);
+					current.x_vmw_cloudservice_deployment_id = parsedResponse[0].deploymentId;
+					//current.comments = "Catalog Request Submitted Successfully.\nDeployment Details:\nName:" + parsedResponse.deploymentName + "\nDeployment ID:" + parsedResponse.deploymentId;
+					current.update();
+					result.state = '2';
+					result.comments = 'Catalog Request Submitted Successfully.\nDeployment Details:\nName:' + parsedResponse[0].deploymentName + '\nDeployment ID:' + parsedResponse[0].deploymentId;
+					CASLogger.debug('Inside else block of response1.haveError():CSRequestUtil.requestCatalog:  result: ' + result);
+					return result;
+				}
+			}
+		} catch (e) {
+			CASLogger.debug('Inside Catch Block of CSRequestUtil.requestCatalog: Exception Block: catalogId: ' + catalogId + ' input: ' + input + ' inputjson: ' + inputjson + 'template1: ' + template1 + ' template: ' + template + ' result: ' + result + ' catalogResponse: ' + catalogResponse + ' casName: ' + casName + ' casDatatype: ' + casDatatype + ' result: ' + result + ' value: ' + value + 'VariablePool: ' + VariablePool + 'VariableData: ' + VariableData);
+			//current.state = '4';
+			//current.comments = 'Error occured while submitting Catalog Request.';
+			//current.update();
+			CASLogger.error("Exception caught inside CSRequestUtil.requestCatalog " + e + ". Error found" + e.stack);
+			result.state = '4';
+			result.comments = 'Error occured while submitting Catalog Request.';
+			CASLogger.debug('Inside Catch Block ofCSRequestUtil.requestCatalog: result: ' + result);
+			return result;
+		}
+},
+	
+	
+	 /*
+        Function Name: createCatalogTemplate
+        Comments: This function use to store input body in catalog template of catalog.
+        Created  On: 3 feb 2023
+        Created by:  Prajakta Kamble
+        
+        */
+	
+	createCatalogTemplate : function(current, parsedTemplate, variableString, store_template){
+		try{
+			for (var inputs in parsedTemplate.inputs) {
+				var variable = '';
+				var rgx = new RegExp('[^a-zA-Z0-9]', 'g');
+				var Portalversion = current.variables.u_version.getDisplayValue();
+				var verison = Portalversion.replace(rgx, ' ').trim().replaceAll(' ', '_');
+				var versionCheck = inputs.replace(rgx, ' ').trim().replaceAll(' ', '_');
+				CASLogger.debug('Inside the CSRequestUtil.requestCatalog: versionCheck: ' + versionCheck);
+
+				if (current.variables.u_version == "" || current.variables.u_version == "undefined" || current.variables.u_version == "undefined,") {
+					variable = versionCheck;
+				} else {
+					variable = versionCheck + "__" + verison;
+				}
+
+				var gl = new GlideRecord(this.appUtil.configuration.table.variable);
+				gl.addQuery('cat_item', current.cat_item);
+				gl.addQuery('name', variable);
+				gl.query();
+				if (gl.next()) {
+					var casName = gl.x_vmw_cloudservice_cas_name;
+					var casDatatype = gl.x_vmw_cloudservice_datatype;
+					CASLogger.debug('Inside If Block of g1.next(): CasDatatype Value: ' + casDatatype + ' CasName Value: ' + casName + ' casDatatype: ' + casDatatype);
+
+					if (casName.startsWith("STR_")) {
+						
+						if (casDatatype == "Multiselect") {
+							var value = current.variables[variable] + '';
+							value = value.trim();
+							parsedTemplate.inputs[inputs] = value.split(',');
+							variableString += gl.question_text + ' :-- ' + value.split(',') + '@#@';
+						} else if (casDatatype == "Duallist") {
+							var value = current.variables[variable] + '';
+							value = value.trim();
+							parsedTemplate.inputs[inputs] = value.split(',');
+							variableString += gl.question_text + ' :-- ' + value.split(',') + '@#@';
+						} else if (casDatatype == "ValuePicker") {
+							var value = current.variables[variable] + '';
+							if (value.startsWith('{') || value.startsWith('"') || value.startsWith('[')) {
+								parsedTemplate.inputs[inputs] = JSON.parse(value);
+								variableString += gl.question_text + ' :-- ' + value + '@#@';
+							} else {
+									parsedTemplate.inputs[inputs] = value;
+									variableString += gl.question_text + ' :-- ' + value + '@#@';
+							}
+						} else {
+
+							parsedTemplate.inputs[inputs] = current.variables[variable] + '';
+							variableString += gl.question_text + ' :-- ' + current.variables[variable] + '@#@';
+						}
+
+					} else if (casName.startsWith("RADO_")) {
+
+						parsedTemplate.inputs[inputs] = current.variables[variable] + '';
+						variableString += gl.question_text + ' :-- ' + current.variables[variable] + '@#@';
+					} else if (casName.startsWith("ARR_")) {
+
+						var value = current.variables[variable] + '';
+						value = value.trim();
+						parsedTemplate.inputs[inputs] = value.split(',');
+						variableString += gl.question_text + ' :-- ' + value.split(',') + '@#@';
+					} else if (casName.startsWith("Date_") || casName.startsWith('DATE_')) {
+
+						var test = current.variables[variable] + '';
+						var dt = new GlideDateTime(test);
+						var cc = dt.getNumericValue();
+						var adate = new Date(cc);
+						var dateValue = adate.getFullYear() + "-" + this.appUtil.appendLeadingZeroes(adate.getMonth() + 1) + "-" + this.appUtil.appendLeadingZeroes(adate.getDate()) + " " + this.appUtil.appendLeadingZeroes(adate.getHours()) + ":" + this.appUtil.appendLeadingZeroes(adate.getMinutes()) + ":" + this.appUtil.appendLeadingZeroes(adate.getSeconds());
+						var data2 = adate.toISOString();
+						parsedTemplate.inputs[inputs] = data2;
+						variableString += gl.question_text + ' :-- ' + dateValue + '@#@';
+
+					} else if (casName.startsWith('PSD_')) {
+
+						var actualpassword = current.variables[variable].getDecryptedValue();
+						parsedTemplate.inputs[inputs] = actualpassword;
+						variableString += gl.question_text + ' :-- ' + actualpassword + '@#@';
+					} else if (casName.startsWith("BOOL_")) {
+
+						if (current.variables[variable] + '' == "true") {
+							parsedTemplate.inputs[inputs] = true;
+							variableString += gl.question_text + ' :-- ' + 'true' + '@#@';
+						} else if (casName.startsWith("ARR_")) {
+
+							parsedTemplate.inputs[inputs] = current.variables[variable].split(",") + '';
+						}
+
+						if (current.variables[variable] + '' == "false") {
+							parsedTemplate.inputs[inputs] = false;
+							variableString += gl.question_text + ' :-- ' + 'false' + '@#@';
+						}
+					} else if (casName.startsWith("INT_")) {
+
+						var value = parseInt(current.variables[variable] + '');
+
+						if (!isNaN(value)) {
+
+							if (casDatatype == "Decimal") {
+
+								parsedTemplate.inputs[inputs] = parseFloat(current.variables[variable] + '');
+								variableString += gl.question_text + ' :-- ' + parseFloat(current.variables[variable]) + '@#@';
+							} else {
+								parsedTemplate.inputs[inputs] = parseInt(current.variables[variable] + '');
+								variableString += gl.question_text + ' :-- ' + current.variables[variable] + '@#@';
+							}
+
+						} else {
+							parsedTemplate.inputs[inputs] = 0;
+							variableString += gl.question_text + ' :-- ' + parseFloat(0) + '@#@';
+						}
+					} else {
+						parsedTemplate.inputs[inputs] = current.variables[variable] + '';
+						variableString += gl.question_text + ' :-- ' + current.variables[variable] + '@#@';
+					}
+				} else {
+					if (current.variables.u_version == "" || current.variables.u_version == "undefined" || current.variables.u_version == "undefined,") {
+						variable = versionCheck.toLowerCase() + '_mrvs';
+					} else {
+						variable = versionCheck.toLowerCase() + '_mrvs' + "_" + verison;
+					}
+					var appScope = gs.getProperty(this.appUtil.configuration.properties.applicationSysID);
+					var setgr = new GlideRecord(this.appUtil.configuration.table.variableSet);
+					setgr.addQuery('sc_cat_item', current.cat_item);
+					setgr.addQuery('variable_set.internal_name', variable);
+					setgr.addQuery('sys_scope', appScope);
+					setgr.query();
+					if (setgr.next()){
+						var vararray = JSON.parse(current.variables[variable]);
+						var updatedArr = [];
+						for (var i = 0; i < vararray.length; i++) {
+							var updatedObj = {};
+							for (var key in vararray[i]) {
+								var varset = new GlideRecord(this.appUtil.configuration.table.variable);
+								varset.addQuery('variable_set', setgr.variable_set.sys_id);
+								varset.addQuery('sys_scope', appScope);
+								varset.addQuery('name', key);
+								varset.query();
+								if (varset.next()){
+									var newKey = varset.x_vmw_cloudservice_vraorginalkeyname;
+									if((varset.x_vmw_cloudservice_cas_name) && varset.x_vmw_cloudservice_cas_name.startsWith('DATE_')) {
+										var date_data = vararray[i][key];
+										var dt = new GlideDateTime(date_data);
+										var cc = dt.getNumericValue();
+										var adate = new Date(cc);
+										var dateValue = adate.getFullYear() + "-" + this.appUtil.appendLeadingZeroes(adate.getMonth() + 1) + "-" + this.appUtil.appendLeadingZeroes(adate.getDate()) + " " + this.appUtil.appendLeadingZeroes(adate.getHours()) + ":" + this.appUtil.appendLeadingZeroes(adate.getMinutes()) + ":" + this.appUtil.appendLeadingZeroes(adate.getSeconds());
+										var data2 = adate.toISOString();
+										updatedObj[newKey] = data2;
+									}else{
+										updatedObj[newKey] = vararray[i][key];
+									}
+								}
+							}
+							updatedArr.push(updatedObj);
+						}
+					var newobj = JSON.stringify(updatedArr);
+					
+					parsedTemplate.inputs[inputs] = JSON.parse(newobj);
+					variableString += setgr.variable_set.title + ' :-- ' + newobj + '@#@';
+					}
+				}
+			}
+			
+		store_template.push(parsedTemplate);
+		store_template.push(variableString);
+		return store_template;
+		}catch(e){
+			CASLogger.error("Exception caught inside CSRequestUtil.createCatalogTemplate " + e + ". Error found" + e.stack);
+		}
+		
+	},
+		
+	/*
+        Function Name: createCatalogBody
+        Comments: This function use to create input template for catalgo body..
+        Created  On: 3 feb 2023
+        Created by:  Prajakta Kamble
+        
+        */
+	
+	
+	createCatalogBody : function(current, input, input1, store_catalogBody){
+		try{
+			var grvars = new GlideRecord(this.appUtil.configuration.table.variable);
+			var variableString = '';
+			grvars.addQuery('cat_item', current.cat_item);
+			grvars.addQuery('type', '!=', '11');
+			grvars.addQuery('type', '!=', '19');
+			grvars.addQuery('type', '!=', '20');
+			//grvars.addQuery('x_vmw_cloudservice_field_visibility', 'true'); //commentout
+			if (current.variables.u_version != '' && current.variables.u_version != 'undefined' && current.variables.u_version != 'undefined,') {
+				grvars.addQuery('x_vmw_cloudservice_versions', current.variables.u_version + ",");
+			}
+			grvars.query();
+			while (grvars.next()) {
+				var name = grvars.getValue('x_vmw_cloudservice_vraorginalkeyname');
+				if (current.variables[grvars.name] != '') {
+					var casName  = grvars.x_vmw_cloudservice_cas_name + '';
+					var casdatatype1 = grvars.x_vmw_cloudservice_property_datatype + '';
+					if (grvars.x_vmw_cloudservice_property_container) {
+						var catName = grvars.x_vmw_cloudservice_property_container + '';
+						if (current.variables[grvars.name] != '') {
+							if (input1[catName]) {
+								if (casName.startsWith("BOOL_")) {
+									if (current.variables[grvars.name] + '' == "true") {
+										input1[catName][name] = true;
+										variableString += grvars.question_text + ' :-- ' + 'true' + '@#@';
+									}
+									if (current.variables[grvars.name] + '' == "false") {
+										input1[catName][name] = false;
+										variableString += grvars.question_text + ' :-- ' + 'false' + '@#@';
+									}
+								}
+								if(casName.startsWith('PSD_')){
+									var actualpassword = current.variables[grvars.name].getDecryptedValue();
+									input1[catName][name]  = actualpassword;
+									variableString += grvars.question_text + ' :-- ' + actualpassword + '@#@';
+								}
+								if (casName.startsWith("INT_")) {
+									var value = parseInt(current.variables[grvars.name] + '');
+									if(!isNaN(value)){
+										if(casdatatype1 == "Decimal"){
+											input1[catName][name] = parseFloat(current.variables[grvars.name] + '');
+											variableString +=  grvars.question_text + ' :-- ' + parseFloat(current.variables[grvars.name]) + '@#@';
+										}
+										else{
+											input1[catName][name] = parseInt(current.variables[grvars.name] + '');
+											variableString += grvars.question_text + ' :-- ' + current.variables[grvars.name] + '@#@';
+										}
+									}
+								}
+								if(casName.startsWith("Date_") || casName.startsWith("DATE_")){
+									var name1 = current.variables[grvars.name] + '';
+									var date = new GlideDateTime(name1);
+									var date_num = date.getNumericValue();
+									var date_new = new Date(date_num);
+									var data = date_new.toISOString();
+									input1[catName][name] = data;
+									variableString += grvars.question_text + ' :-- ' + data + '@#@';
+								}
+								else if (casName.startsWith("STR_")) {
+									input1[catName][name] = current.variables[grvars.name] + '';
+									variableString += grvars.question_text + ' :-- ' + current.variables[grvars.name] + '@#@';
+								}
+							} else {
+								input1[catName] = {};
+								if (casName.startsWith("BOOL_")) {
+									if (current.variables[grvars.name] + '' == "true") {
+										input1[catName][name] = true;
+										variableString += grvars.question_text + ' :-- ' + 'true' + '@#@';
+									}
+									if (current.variables[grvars.name] + '' == "false") {
+										input1[catName][name] = false;
+										variableString += grvars.question_text + ' :-- ' + 'false' + '@#@';
+									}
+								}
+								if(casName.startsWith('PSD_')){
+									var actualpassword = current.variables[grvars.name].getDecryptedValue();
+									input1[catName][name]  = actualpassword;
+									variableString += grvars.question_text + ' :-- ' + actualpassword + '@#@';
+								}
+								if (casName.startsWith("INT_")) {
+									var value = parseInt(current.variables[grvars.name] + '');
+									if(!isNaN(value)){
+										if(casdatatype1 == "Decimal"){
+											input1[catName][name] = parseFloat(current.variables[grvars.name] + '');
+											variableString +=  grvars.question_text + ' :-- ' + parseFloat(current.variables[grvars.name]) + '@#@';
+										}
+										else{
+											input1[catName][name] = parseInt(current.variables[grvars.name] + '');
+											variableString += grvars.question_text + ' :-- ' + current.variables[grvars.name] + '@#@';
+										}
+									}
+								} 
+								if(casName.startsWith("Date_") || casName.startsWith("DATE_")){
+									var name1 = current.variables[grvars.name] + '';
+									var date = new GlideDateTime(name1);
+									var date_num = date.getNumericValue();
+									var date_new = new Date(date_num);
+									var data = date_new.toISOString();
+									input1[catName][name] = data;
+									variableString += grvars.question_text + ' :-- ' + data + '@#@';
+								}
+								else if (casName.startsWith("STR_")) {
+									input1[catName][name] = current.variables[grvars.name] + '';
+									variableString += grvars.question_text + ' :-- ' + current.variables[grvars.name] + '@#@';
+								}
+							}
+						}
+					}
+					else{
+						input.push(name);
+						input.push('');
+					}
+				}
+            //CASLogger.debug('Inside While Block of CSRequestUtil.requestCatalog : name:  '+name);
+			}
+			
+			//below code is used to add datagrid key to the input array.
+			var ver = '';
+			var appScope = gs.getProperty(this.appUtil.configuration.properties.applicationSysID);
+			var rgx = new RegExp('[^a-zA-Z0-9]', 'g');
+			if (current.variables.u_version != '' && current.variables.u_version != 'undefined' && current.variables.u_version != 'undefined,') {
+					ver = current.variables.u_version + '';
+					ver = ver.replace(rgx, ' ').trim().replaceAll(' ', '_');
+			}
+			var setGr = new GlideRecord(this.appUtil.configuration.table.variableSet);
+			setGr.addEncodedQuery('sc_cat_item='+ current.cat_item + '^variable_set.sys_id!='+this.appUtil.configuration.properties.variableSetSysID + '^sys_scope=' + appScope);
+			setGr.query();
+			while(setGr.next()){
+				if (ver != ''){
+					if(setGr.variable_set.internal_name.endsWith('_mrvs' + '_' + ver)){
+						//Data grid's original Id is stored in name field of variable table.
+						input.push(setGr.variable_set.name+ '');
+						input.push('');
+					}
+				} else {
+					input.push(setGr.variable_set.name+ '');
+					input.push('');
+				}
+			}
+			store_catalogBody.push(input);
+			store_catalogBody.push(variableString);
+			return store_catalogBody;
+		}catch(e){
+			CASLogger.error("Exception caught inside CSRequestUtil.createCatalogComplexBody " + e + ". Error found" + e.stack);
+		}
+	},
+	
+	
+	
+	inputs_merge: function(input1, input2) {
+		try{
+			for (var name in input1) {
+				var mached = false;
+				for (var dt in input2) {
+					if (dt == name)
+						mached = true;
+				}
+				if (!mached)
+					input2[name] = input1[name];
+			}
+			return input2;
+		}catch(e){
+			CASLogger.error("Exception caught inside CSRequestUtil.merge " + e + ". Error found" + e.stack);
+		}
+
+    },
+	
+	
+    /*
+        Function Name: requestDeployment
+        Comments: This function use to check the status of  requested deployment.
+        Updated On: 22 Apr 2022
+        Updated By: Pramod wagh
+        Update Comments: Calling API call create failed and update failed  
+        */
+    requestDeployment: function(current) {
+        try {
+			var workflowSync = gs.getProperty(this.appUtil.configuration.properties.workflowSync);
+            var currentStore = current;
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+            var deploymentId = current.x_vmw_cloudservice_deployment_id;
+            CASLogger.debug('Inside the CSRequestUtil.requestDeployment: deployment Id: ' + deploymentId);
+
+            var result = {
+                "state": '',
+                "comments": ''
+            };
+
+
+            if (current.cat_item.organisation_name.select_automation_service == 'vRealiseAutomationCloud') {
+                token = current.cat_item.organisation_name.api_token.getDecryptedValue(); //getting the api token for validation
+                endPoint = current.cat_item.organisation_name.cas_url + this.appUtil.configuration.api.deployment + deploymentId;
+                CASLogger.debug("------------inside api call building -----------" + endPoint + "----------" + deploymentId);
+            }
+
+            if (current.cat_item.organisation_name.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = current.cat_item.organisation_name.hostname + this.appUtil.configuration.api.deployment + deploymentId;
+                midserver = current.cat_item.organisation_name.mid_server.name;
+                token = current.cat_item.organisation_name.api_token.getDecryptedValue();
+                CASLogger.debug("------------inside api call building MIDSERVER---------" + endPoint + "----------" + deploymentId);
+
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug("--------------Inside after API call---------" + ' response: ' + response);
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSRequestUtil.requestDeployment):" + endPoint);
+                        result.state = '2';
+                        result.comments = 'Error occured while getting  deployment details inside CSRequestUtil.requestDeployment.' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSRequestUtil.requestDeployment):" + endPoint;
+                        CASLogger.debug("------------Inside  IF APi call error----------" + JSON.stringify(result) + "--------" + "Statuscode----------" + response.getStatusCode() + "-------------" + deploymentId);
+                    } else {
+                        CASLogger.error("Error occured while getting  deployment details inside CSRequestUtil.requestDeployment." + response.getErrorMessage()());
+                        result.state = '2';
+                        result.comments = 'Error occured while getting  deployment details inside CSRequestUtil.requestDeployment.' + response.getErrorMessage()();
+                        CASLogger.debug("------------Inside ELSE APi call error----------" + JSON.stringify(result) + "--------" + "Statuscode----------" + response.getStatusCode() + "-------------" + deploymentId);
+                    }
+                }
+
+                CASLogger.debug("------Inside If Block: Result ---------" + result);
+                return result;
+            } else {
+                var responseBody = response.getBody();
+                var catalog = "Catalog";
+	            var res = this.daoUtil.checkNull(responseBody);
+                if (res == false || res == 'false') {
+                    CASLogger.debug('----------inside null/empty if block---------' + responseBody + "-----------" + deploymentId);
+                    result.state = '2';
+                    result.comments = 'Unable to connect to VMware Aria Automation. Please confirm connectivity with VMware Aria Automation and VMware Aria Automation status';
+                    CASLogger.debug('-----------Inside null/empty if block result-------' + JSON.stringify(result) + "-------" + deploymentId);
+                    return result;
+                } else {
+                    CASLogger.debug('----------inside else block with response---------' + responseBody + "-----------" + deploymentId);
+                    var parsed = this.appUtil.parse(responseBody);
+                    var deploymentStatus = parsed.status;
+                    CASLogger.debug("-----------inside status check---------" + deploymentStatus + "--------" + deploymentId);
+                   switch(deploymentStatus){
+                    case 'CREATE_SUCCESSFUL':
+                        CASLogger.debug("---------inside CREATE_SUCCESSFUL before daoutil call----------" + deploymentId);
+                        //                         this.daoUtil.insert("createCMDB", responseBody, endPoint, current.cat_item.organisation_name); //getting data from VMware Aria Automation
+                        // 						this.daoUtil.checkThreadLimit();
+						if(workflowSync == 'true'){
+                        var resourceStatus = this.createCMDB.RequestResource(deploymentId, currentStore, responseBody, endPoint, parsed.status, catalog);
+						} else {
+							var resourceStatus = {
+                                    "state": '3',
+                                    "comments": 'Deployment Id = ' + deploymentId + '\nDeployment State: Successful'
+                                };
+						}
+    
+                        CASLogger.debug("---------inside CREATE_SUCCESSFUL After daoutil call----------" + deploymentId);
+    
+                        CASLogger.debug("-------Inside CREATE_SUCCESSFUL --------" + JSON.stringify(result) + "--------" + deploymentId);
+                        return resourceStatus;
+
+                    case 'CREATE_INPROGRESS':
+                            result.state = '2';
+                            result.comments = '';
+                            CASLogger.debug("-------Inside CREATE_INPROGRESS --------" + JSON.stringify(result) + "--------" + deploymentId);
+                            return result;
+
+                    case 'CREATE_FAILED':
+					CASLogger.debug("---------inside CREATE_FAILED before daoutil call----------" + deploymentId);
+								//this.daoUtil.insert("createCMDB", responseBody, endPoint, current.cat_item.organisation_name);
+								//this.daoUtil.checkThreadLimit();
+								if(workflowSync == 'true'){
+                    var resourceStatus = this.createCMDB.RequestResource(deploymentId, currentStore, responseBody, endPoint, parsed.status, catalog);
+								} else{
+									var resourceStatus = {
+                                    "state": '4',
+                                    "comments": 'Deployment Id = ' + deploymentId + '\nDeployment State: Create Failed'
+                                };
+								}
+					var resp = this.getFailureDetailsForDeployement(current,deploymentId);	   
+					CASLogger.debug("---------inside CREATE_FAILED After daoutil call----------" + deploymentId);
+						   
+					result.state= resourceStatus.state;
+					result.comments =resourceStatus.comments + '\nDetails : '  + resp;  
+					
+                    CASLogger.debug("-------Inside CREATE_FAILED --------" + JSON.stringify(result) + "--------" + deploymentId);
+                    return result;
+
+                    default:
+					var deploymentCreateStatus = this.getCreateStausDeployment(currentStore);
+					if(deploymentCreateStatus == "SUCCESSFUL"){
+						if(workflowSync == 'true'){
+							
+						var resourceStatus = this.createCMDB.RequestResource(deploymentId, currentStore, responseBody, endPoint, "CREATE_SUCCESSFUL", catalog);
+						} else{
+							var resourceStatus = {
+                                    "state": '3',
+                                    "comments": 'Deployment Id = ' + deploymentId + '\nDeployment State: Successful'
+                                };
+						}
+    
+                        CASLogger.debug("---------inside default SUCCESSFUL After daoutil call----------" + deploymentId);
+    
+                        CASLogger.debug("-------Inside default SUCCESSFUL --------" + JSON.stringify(result) + "--------" + deploymentId);
+                        return resourceStatus;
+					} else {
+                    CASLogger.debug("------New Status Found--------" + deploymentStatus + '---------' + deploymentId + "state : " + deploymentCreateStatus.state + "comments : " + deploymentCreateStatus.comments);
+                    return deploymentCreateStatus;
+					}
+                }
+                }
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSRequestUtil.requestDeployment: Exception Block: deploymentId: ' + deploymentId + ' result: ' + result + ' responseBody: ' + responseBody + ' deploymentStatus: ' + deploymentStatus);
+
+            CASLogger.error("Exception caught inside CSRequestUtil.requestDeployment " + e + ". Error found" + e.stack);
+            result.state = '2';
+            result.comments = 'Exception caught inside CSRequestUtil.requestDeployment ' + e;
+            CASLogger.debug("-------------Inside requestDeployment exception----------" + deploymentId + '--------' + deploymentStatus + "--------------" + responseBody + "----------" + JSON.stringify(result));
+
+            return result;
+        }
+    },
+	/*Function Name: CheckDeployemtResource
+        Comments: This function use to Check the Deployemt and Resource.
+        Created On: 11th May 2022
+        Created By: Shivam Goyal
+          
+        */
+	CheckDeployemtResource: function(current) {
+		
+		try{
+			
+        var deploymentId = current.x_vmw_cloudservice_deployment_id;
+		CASLogger.debug('Inside the CSRequestUtil.CheckDeployemtResource: deployment Id: ' + deploymentId);
+			
+        var result = 'no';
+		var resCount ='';
+		var resourceIds ='';
+		var dep=[];
+        var deploy = new GlideRecord('x_vmw_cloudservice_deployments');
+        deploy.addQuery('deployment_id='+ deploymentId+'^operational_status='+'1');
+        deploy.query();
+        if (deploy.next()) {
+            resourceIds = deploy.resource_ids;
+			
+            if (resourceIds == '' || resourceIds == ' ') {
+               result = 'yes';
+            } else {
+				
+                var id = resourceIds.split(",");
+				for(var i=0;i<id.length-1;i++){
+					dep.push(id[i]);
+				}
+                var depCount = dep.length;
+			
+				var res = new GlideAggregate('x_vmw_cloudservice_machines');
+                res.addEncodedQuery('deploymentid='+deploymentId +'^operational_status='+'1');
+                res.addAggregate('COUNT');
+                res.query();
+               if(res.next()){
+                  resCount = res.getAggregate('COUNT');
+               }
+                if (resCount == depCount) {
+                    result = 'yes';
+                } else {
+                    result= 'no';
+                }
+            }
+			return result;
+
+        }
+		
+		return result;
+		} catch (e) {
+        CASLogger.error("Exception caught inside CSRequestUtil.CheckDeployemtResource " + e + ". Error found" + e.stack);
+		CASLogger.debug('Inside CAtch Block of CSRequestUtil.CheckDeployemtResource: Exception Block: deploymentId: ' + deploymentId);
+    }
+    },
+	
+	/*Function Name: getFailureDetailsForDeployement
+        Comments: This function use to make API call for create failed and update failed.
+        Created On: 22 Apr 2022
+        Created By: Pramod wagh
+          
+        */
+getFailureDetailsForDeployement: function(current, deploymentId) {
+
+    try {
+
+        var midserver = '';
+        var endPoint = '';
+        var token = '';
+
+        CASLogger.debug('Inside the CSRequestUtil.getFailureDetailsForDeployement: deployment Id: ' + deploymentId);
+
+
+        if (current.cat_item.organisation_name.select_automation_service == 'vRealiseAutomationCloud') {
+            token = current.cat_item.organisation_name.api_token.getDecryptedValue(); //getting the api token for validation
+            endPoint = current.cat_item.organisation_name.cas_url + this.appUtil.configuration.api.deployment + deploymentId + '/requests';
+            CASLogger.debug("------------inside api call building -----------" + endPoint + "----------" + deploymentId);
+        }
+
+        if (current.cat_item.organisation_name.select_automation_service == 'vrealizeAutomationService') {
+            endPoint = current.cat_item.organisation_name.hostname + this.appUtil.configuration.api.deployment + deploymentId + '/requests';
+            midserver = current.cat_item.organisation_name.mid_server.name;
+            token = current.cat_item.organisation_name.api_token.getDecryptedValue();
+            CASLogger.debug("------------inside api call building MIDSERVER---------" + endPoint + "----------" + deploymentId);
+
+        }
+
+        var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+        var responseBody1 = response.getBody();
+		var res = this.daoUtil.checkNull(responseBody1);
+		if(res == false || res == 'false'){
+			CASLogger.error('Inside null/empty if block of CSRequestUtil.getFailureDetailsForDeployement :responseBody1: ' + responseBody1);
+			return;
+		}else{
+		var obj = JSON.parse(responseBody1);
+        var resp = obj.content[0].details;
+        return resp;
+		}
+    } catch (e) {
+        CASLogger.error("Exception caught inside CSRequestUtil.getFailureDetailsForDeployement " + e + ". Error found" + e.stack);
+		CASLogger.debug('Inside CAtch Block of CSRequestUtil.getFailureDetailsForDeployement: Exception Block: responseBody: ' + resp);
+    }
+},
+
+    getOAuthAccessToken: function(current) {
+        try {
+            CASLogger.debug('Inside the CSRequestUtil.getOAuthAccessToken. ');
+            var oAuthToken = new GlideRecord(this.appUtil.configuration.table.oauthToken);
+            oAuthToken.addQuery('user', current.opened_by);
+            oAuthToken.addQuery('endpoint', current.cat_item.organisation_name);
+            oAuthToken.addQuery('type', 'refresh_token');
+            oAuthToken.query();
+            if (oAuthToken.next()) {
+                var refresh_token = oAuthToken.token_received.getDecryptedValue();
+                var token_url = oAuthToken.endpoint.token_url;
+                var body = "grant_type=refresh_token&refresh_token=" + refresh_token;
+                var base64Auth = gs.base64Encode(oAuthToken.endpoint.client_id + ':' + oAuthToken.endpoint.client_secret.getDecryptedValue());
+                var response = this.appUtil.makeApiCall(token_url, 'post', body, '', "application/json", "application/x-www-form-urlencoded", 'Basic ' + base64Auth);
+                CASLogger.debug('Inside CSRequestUtil.getOAuthAccessToken:---response: ' + response);
+                if (response.haveError()) {
+                    var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                    for (var s = 0; s < propertyStatus.length; s++) {
+                        if (propertyStatus[s] == response.getStatusCode()) {
+                            CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSRequestUtil.getOAuthAccessToken):" + token_url);
+                        } else {
+                            CASLogger.error('REST call error found inside CSRequestUtil.getOAuthAccessToken : ' + response.getErrorMessage());
+                        }
+                    }
+
+                } else {
+                    var responseBody = response.getBody();
+					var res = this.daoUtil.checkNull(responseBody);
+					if(res == false || res == 'false'){
+						CASLogger.error('Inside null/empty if block of CSRequestUtil.getOAuthAccessToken :responseBody: ' + responseBody);
+						return;
+					}else{
+                    CASLogger.debug('Inside getOAuthAccessToken Else block: responseBody: ' + responseBody);
+                    var respBody = this.appUtil.parse(responseBody);
+                    var accessToken = respBody.access_token;
+                    return accessToken;
+                }
+				}
+            }
+        } catch (e) {
+            CASLogger.debug('Inside CAtch Block of CSRequestUtil.getOAuthAccessToken: Exception Block: responseBody: ' + responseBody);
+            CASLogger.error("Exception caught inside CSRequestUtil.getOAuthAccessToken " + e + ". Error found" + e.stack);
+        }
+    },
+	
+	getCreateStausDeployment: function(current) {
+        try {
+            var midserver = '';
+            var endPoint = '';
+            var token = '';
+            var deploymentId = current.x_vmw_cloudservice_deployment_id;
+            CASLogger.debug('Inside the CSRequestUtil.getCreateStausDeployment: deployment Id: ' + deploymentId);
+
+            var result = {
+                "state": '',
+                "comments": ''
+            };
+
+
+            if (current.cat_item.organisation_name.select_automation_service == 'vRealiseAutomationCloud') {
+                token = current.cat_item.organisation_name.api_token.getDecryptedValue(); //getting the api token for validation
+                endPoint = current.cat_item.organisation_name.cas_url + this.appUtil.configuration.api.deployment + deploymentId + "/requests?search=Create";
+                CASLogger.debug("------------inside api call building -----------" + endPoint + "----------" + deploymentId);
+            }
+
+            if (current.cat_item.organisation_name.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = current.cat_item.organisation_name.hostname + this.appUtil.configuration.api.deployment + deploymentId + "/requests?search=Create";
+                midserver = current.cat_item.organisation_name.mid_server.name;
+                token = current.cat_item.organisation_name.api_token.getDecryptedValue();
+                CASLogger.debug("------------inside api call building MIDSERVER---------" + endPoint + "----------" + deploymentId);
+
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            CASLogger.debug("--------------Inside after API call---------" + ' response: ' + response);
+            if (response.haveError()) {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSRequestUtil.getCreateStausDeployment):" + endPoint);
+                        result.state = '2';
+                        result.comments = 'Error occured while getting  deployment details inside CSRequestUtil.getCreateStausDeployment.' + this.appUtil.timeOutMessage(response.getStatusCode()) + ":(CSRequestUtil.getCreateStausDeployment):" + endPoint;
+                        CASLogger.debug("------------Inside  IF APi call error----------" + JSON.stringify(result) + "--------" + "Statuscode----------" + response.getStatusCode() + "-------------" + deploymentId);
+                    } else {
+                        CASLogger.error("Error occured while getting  deployment details inside CSRequestUtil.getCreateStausDeployment." + response.getErrorMessage()());
+                        result.state = '2';
+                        result.comments = 'Error occured while getting  deployment details inside CSRequestUtil.getCreateStausDeployment.' + response.getErrorMessage()();
+                        CASLogger.debug("------------Inside ELSE APi call error----------" + JSON.stringify(result) + "--------" + "Statuscode----------" + response.getStatusCode() + "-------------" + deploymentId);
+                    }
+                }
+
+                CASLogger.debug("------Inside If Block: Result ---------" + result);
+                return result;
+            } else {
+                var responseBody = response.getBody();
+				var res = this.daoUtil.checkNull(responseBody);
+                if (res == false || res == 'false') {
+                    CASLogger.debug('----------inside null/empty if block---------' + responseBody + "-----------" + deploymentId);
+                    result.state = '2';
+                    result.comments = 'Unable to connect to VMware Aria Automation. Please confirm connectivity with VMware Aria Automation and VMware Aria Automation status';
+                    CASLogger.debug('-----------Inside null/empty if block result-------' + JSON.stringify(result) + "-------" + deploymentId);
+                    return result;
+                } else {
+                    CASLogger.debug('----------inside else block with response---------' + responseBody + "-----------" + deploymentId);
+                    var parseBody = this.appUtil.parse(responseBody);
+					var parsed = parseBody.content.length;
+					var deploymentStatus = '';
+					for (var i = 0; i < parsed; i++){
+						var actionName = parseBody.content[i].name;
+						if(actionName == "Create"){
+							deploymentStatus = parseBody.content[i].status;
+							break;
+						}
+					}
+                   return deploymentStatus;
+                }
+            }
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of CSRequestUtil.getCreateStausDeployment: Exception Block: deploymentId: ' + deploymentId + ' result: ' + result + ' responseBody: ' + responseBody + ' deploymentStatus: ' + deploymentStatus);
+
+            CASLogger.error("Exception caught inside CSRequestUtil.getCreateStausDeployment " + e + ". Error found" + e.stack);
+            result.state = '2';
+            result.comments = 'Exception caught inside CSRequestUtil.getCreateStausDeployment ' + e;
+            CASLogger.debug("-------------Inside getCreateStausDeployment exception----------" + deploymentId + '--------' + deploymentStatus + "--------------" + responseBody + "----------" + JSON.stringify(result));
+
+            return result;
+        }
+    },
+
+
+    type: 'CSRequestUtil'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-08-26 14:00:04</sys_created_on>
+        <sys_id>0e669f78db2733007b245385ca961966</sys_id>
+        <sys_mod_count>380</sys_mod_count>
+        <sys_name>CSRequestUtil</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_0e669f78db2733007b245385ca961966</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-08-26 08:17:24</sys_updated_on>
+    </sys_script_include>
+</record_update>

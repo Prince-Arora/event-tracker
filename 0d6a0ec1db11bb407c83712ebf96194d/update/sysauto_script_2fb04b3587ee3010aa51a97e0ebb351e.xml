@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sysauto_script">
+    <sysauto_script action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <business_calendar/>
+        <condition><![CDATA[var value = gs.getProperty('x_vmw_cloudservice.ThreadActivated').toLowerCase();
+var rateLimit = gs.getProperty('x_vmw_cloudservice.rateLimitMaximised').toLowerCase();
+if (value == 'true' || rateLimit == 'true') {
+    answer = true;
+}]]></condition>
+        <conditional>true</conditional>
+        <entered_time>1970-01-01 00:00:00</entered_time>
+        <max_drift/>
+        <name>Thread Limit</name>
+        <offset/>
+        <offset_type/>
+        <run_as/>
+        <run_as_tz/>
+        <run_dayofmonth>1</run_dayofmonth>
+        <run_dayofweek>1</run_dayofweek>
+        <run_period>1970-01-01 00:00:01</run_period>
+        <run_start>2021-09-13 06:40:21</run_start>
+        <run_time>1970-01-01 08:00:00</run_time>
+        <run_type>periodically</run_type>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2021-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var value = gs.getProperty('x_vmw_cloudservice.ThreadActivated').toLowerCase();
+var active = '';
+
+if (value == 'true') {
+    var threadUse = gs.getProperty('x_vmw_cloudservice.ThreadUsed');
+    var gr_Ready = new GlideRecord('x_vmw_cloudservice_cas_queue');
+    gr_Ready.addEncodedQuery('stateINError,Processing,Ready^retry_count<' + gs.getProperty('x_vmw_cloudservice.topic_retry_count'));
+    gr_Ready.orderBy('sys_created_on');
+    gr_Ready.query();
+
+
+
+
+    if (gr_Ready.hasNext()) {
+        var ga_Process_Count = new GlideAggregate('x_vmw_cloudservice_cas_queue');
+        ga_Process_Count.addEncodedQuery('state=Processing');
+        ga_Process_Count.addAggregate('COUNT');
+        ga_Process_Count.query();
+        var count = '';
+        if (ga_Process_Count.next()) {
+            count = ga_Process_Count.getAggregate('COUNT');
+        }
+
+
+
+        gr_Ready.addQuery('state=Ready^ORstate=Error^topicNOT LIKEretry_^retry_count<' + gs.getProperty('x_vmw_cloudservice.topic_retry_count'));
+
+        var procesThread = threadUse - count;
+        if (procesThread > 0) {
+            gr_Ready.setLimit(procesThread);
+            gr_Ready.query();
+            while (gr_Ready.next()) {
+                gr_Ready.state = 'Processing';
+                gr_Ready.update();
+            }
+        }
+
+
+    } else {
+        active = waitUntil(5);
+        if (active == true) {
+            gs.setProperty('x_vmw_cloudservice.ThreadActivated', 'false');
+        }
+    }
+} else {
+	var waitTime = gs.getProperty('x_vmw_cloudservice.rateLimitHaltTime');
+    active = waitUntil(waitTime);
+    if (active == true) {
+        gs.setProperty('x_vmw_cloudservice.ThreadActivated', 'true');
+        gs.setProperty('x_vmw_cloudservice.rateLimitMaximised', 'false');
+    }
+}
+
+// below function is the logic to wait for 5 mins.
+
+function waitUntil(requiredMins) {
+    var date = new GlideDateTime();
+    var grOrg = new GlideRecord('x_vmw_cloudservice_register_cas_organization');
+    grOrg.query();
+    var active = false;
+    while (grOrg.next()) {
+        if (grOrg.timelimit == '') {
+            grOrg.timelimit = date;
+            grOrg.update();
+        } else {
+            var old_time = new GlideDateTime(grOrg.timelimit);
+            var new_time = new GlideDateTime();
+            var diffSeconds = GlideDateTime.subtract(old_time, new_time);
+            var min = (diffSeconds.getNumericValue() / 60000);
+            if (min >= requiredMins) {
+                grOrg.timelimit = '';
+                grOrg.update();
+                active = true;
+            }
+        }
+    }
+    return active;
+}]]></script>
+        <sys_class_name>sysauto_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2021-09-13 06:40:53</sys_created_on>
+        <sys_id>2fb04b3587ee3010aa51a97e0ebb351e</sys_id>
+        <sys_mod_count>262</sys_mod_count>
+        <sys_name>Thread Limit</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sysauto_script_2fb04b3587ee3010aa51a97e0ebb351e</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-21 05:24:28</sys_updated_on>
+        <time_zone/>
+        <upgrade_safe>false</upgrade_safe>
+    </sysauto_script>
+</record_update>

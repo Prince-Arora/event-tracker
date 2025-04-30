@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.createCMDB</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description/>
+        <name>createCMDB</name>
+        <script><![CDATA[/***********************************************************
+* Copyright (c) 2021-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var createCMDB = Class.create();
+createCMDB.prototype = {
+    initialize: function() {
+        this.appUtil = new CASAppUtil();
+        this.daoUtil = new CASDaoUtil();
+    },
+    /*
+        Function Name: insertDeploymentData
+        Comments: This function use to insert deployment data into table.
+        Created On: 12th may 2022
+        Created By: Shivam Goyal
+        Update Comments: NA
+        */
+    insertDeploymentData: function(current) {
+        try {
+            CASLogger.debug('Inside createCMDB.insertDeploymentData:insert of CMDB Data');
+            var obj = this.appUtil.parse(current.response);
+            var resourceResponsebody = current.request;
+            var resourceBody = this.appUtil.parse(resourceResponsebody);
+            var resourceIds = '';
+            var contentLength = resourceBody.content.length;
+            for (var i = 0; i < contentLength; i++) {
+                resourceIds += resourceBody.content[i].id + ",";
+            }
+
+            var inputs = this.appUtil.stringify(obj.inputs);
+            var deploymentId = obj.id;
+            var expense = this.appUtil.stringify(obj.expense);
+            var grDep = new GlideRecord(this.appUtil.configuration.table.deploymentImport);
+            grDep.initialize();
+            grDep.deployment_id = obj.id;
+            grDep.u_name = obj.name;
+            grDep.orgid = obj.orgId;
+            grDep.resource_id = resourceIds;
+            grDep.organization = current.organization;
+            if (obj.catalogItemId != null) {
+                grDep.catalog_item_id = obj.catalogItemId;
+            }
+            if (obj.catalogItemVersion != null) {
+                grDep.catalog_item_version = obj.catalogItemVersion;
+            }
+
+            grDep.blueprintid = obj.blueprintId;
+            if (obj.blueprintVersion != null) {
+                grDep.blueprint_version = obj.blueprintVersion;
+            }
+
+            grDep.deployment_createdat = obj.createdAt;
+            grDep.deployment_createdby = obj.createdBy;
+			grDep.deployment_ownedby = obj.ownedBy;
+            grDep.deployment_lastupdatedat = obj.lastUpdatedAt;
+            grDep.deploymebt_lastupdatedby = obj.lastUpdatedBy;
+            grDep.deployment_stimulated = obj.simulated;
+            grDep.deployment_inputs = inputs;
+            grDep.expense = expense;
+            if (obj.description != null) {
+                grDep.description = obj.description;
+            }
+            grDep.projectid = obj.projectId;
+            if (obj.status != null) {
+                grDep.deployment_status = obj.status;
+            }
+            if (obj.leaseExpireAt !== null) {
+                grDep.expires_on = obj.leaseExpireAt;
+            }
+
+            grDep.insert();
+            this.daoUtil.insert("parseResource", resourceResponsebody, deploymentId, current.organization, 'Processing');
+            return true;
+        } catch (e) {
+            CASLogger.debug('Inside Catch Block of createCMDB.insertDeploymentData: Exception Block: ' + ' deploymentId: ' + deploymentId + ' inputs: ' + inputs + ' expense: ' + expense);
+            CASLogger.error('Import::: Deployment: ' + '\n deploymentName: ' + obj.name + '\n deploymentId: ' + deploymentId + '\n endPoint: ' + current.organization.cas_url + '\n Exception caugth inside createCMDB.insertDeploymentData.\n Error found: ' + e.stack);
+            return "exceptionError";
+        }
+    },
+
+    /*
+            Function Name: RequestResource
+            Comments: This function use to Request the Resource from VMware Aria Automation.
+            Created On: 20 Dec 2021
+            Created By: Shivam Goyal
+            Update Comments: NA
+            */
+
+    RequestResource: function(id, current, body, point, status, item) {
+        try {
+            CASLogger.debug('Inside  createCMDB.RequestResource: Start of Resource import');
+            var organization = '';
+			
+            if (item == "Actions") {
+                organization = current.variables.endpoint;
+            } else {
+                organization = current.cat_item.organisation_name;
+            }
+
+            var deploymentId = id;
+            var endPoint = '';
+            var midserver = '';
+            var token = '';
+            var result = {
+                "state": '',
+                "comments": ''
+            };
+			
+			var pageSize = gs.getProperty(this.appUtil.configuration.properties.apiPageSize);
+			
+            if (organization.select_automation_service == 'vRealiseAutomationCloud') {
+                token = organization.api_token.getDecryptedValue().toString(); //getting the api token for validation
+                endPoint = organization.cas_url + this.appUtil.configuration.api.machine + deploymentId + "/resources?size=" + pageSize + "&page=0&resourceRefreshStrategy=ASYNC&origin=DEPLOYED";
+            }
+            if (organization.select_automation_service == 'vrealizeAutomationService') {
+                endPoint = organization.hostname + this.appUtil.configuration.api.machine + deploymentId + "/resources?size=" + pageSize + "&page=0&resourceRefreshStrategy=ASYNC&origin=DEPLOYED";
+                midserver = organization.mid_server.name;
+                token = organization.api_token.getDecryptedValue();
+            }
+            var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+            var submit = 'true';
+            var recall = 3;
+            if (response.haveError()) {
+
+                submit = 'false';
+                while (recall != 0) {
+                    response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+                    if (response.haveError()) {
+                        recall--;
+                    } else {
+                        submit = 'true';
+                        break;
+                    }
+                }
+            }
+            if (submit == 'false') {
+                var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                for (var s = 0; s < propertyStatus.length; s++) {
+                    if (propertyStatus[s] == response.getStatusCode()) {
+                        CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(createCMDB.RequestResource):" + endPoint);
+                    } else {
+                        CASLogger.error('REST call error found inside createCMDB.RequestResource: ' + response.getErrorMessage());
+                    }
+                }
+                result.state = '4';
+                result.comments = ' Error occured while getting Resource details inside CreateCMDB.requestResource.' + response.getErrorMessage();
+                return result;
+            }
+            if (submit == 'true') {
+                var resourceResponsebody = response.getBody();
+                this.daoUtil.insert("insertCMDB", body, resourceResponsebody, organization, 'Processing');
+				
+                var obj = this.appUtil.parse(resourceResponsebody);
+                var pageElement = obj.totalPages;
+                for (var j = 1; j < pageElement; j++) {
+                    if (organization.select_automation_service == 'vRealiseAutomationCloud') {
+                        token = organization.api_token.getDecryptedValue().toString(); 
+                        endPoint = organization.cas_url + this.appUtil.configuration.api.machine + deploymentId + "/resources?size=" + pageSize + "&page="+ j+"&resourceRefreshStrategy=ASYNC&origin=DEPLOYED";
+                    }
+                    if (organization.select_automation_service == 'vrealizeAutomationService') {
+                        endPoint = organization.hostname + this.appUtil.configuration.api.machine + deploymentId + "/resources?size=" + pageSize + "&page="+ j+ "&resourceRefreshStrategy=ASYNC&origin=DEPLOYED";
+             midserver = organization.mid_server.name;
+                        midserver = organization.mid_server.name;
+                        token = organization.api_token.getDecryptedValue();
+                    }
+
+                    var response = this.appUtil.makeApiCall(endPoint, 'get', '', midserver, "application/json", "application/json", 'Bearer ' + token);
+                    if (response.haveError()) {
+                        var propertyStatus = gs.getProperty(this.appUtil.configuration.properties.statusCode).split(',');
+                        for (var s = 0; s < propertyStatus.length; s++) {
+                            if (propertyStatus[s] == response.getStatusCode()) {
+                                CASLogger.error(this.appUtil.timeOutMessage(response.getStatusCode()) + ":(createCMDB.RequestResource):" + endPoint);
+                            } else {
+                                CASLogger.error('REST call error found inside createCMDB.RequestResource: ' + response.getErrorMessage());
+                            }
+                        }
+                    } else {
+                        var responsebody = response.getBody();
+                        this.daoUtil.insert("parseResource", responsebody, deploymentId, organization, 'Processing');
+                    }
+                }
+                // this.daoUtil.insert("parseResource", responsebody, deploymentId, current.cat_item.organisation_name);
+                this.daoUtil.checkThreadLimit();
+				
+                if (status == 'CREATE_SUCCESSFUL') {
+                    result.state = '3';
+                } else {
+                    result.state = '4';
+                }
+                result.comments = 'Deployment Id = ' + deploymentId + '\nDeployment State: ' + status;
+                return result;
+            }
+        } catch (e) {
+            CASLogger.debug('Inside catch block of createCMDB.RequestResource: exception block' + ' deploymentId: ' + deploymentId + ' responsebody: ' + resourceResponsebody);
+            CASLogger.error("Exception caught inside createCMDB.RequestResource " + e + ". Error found" + e.stack);
+            result.state = '4';
+            result.comments = ' Exception caught inside createCMDB.RequestResource. ' + e;
+            return result;
+        }
+    },
+
+    type: 'createCMDB'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2021-12-20 08:11:27</sys_created_on>
+        <sys_id>9bdf77591be00110d974ece4604bcbfc</sys_id>
+        <sys_mod_count>69</sys_mod_count>
+        <sys_name>createCMDB</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_9bdf77591be00110d974ece4604bcbfc</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-12-17 10:50:31</sys_updated_on>
+    </sys_script_include>
+</record_update>

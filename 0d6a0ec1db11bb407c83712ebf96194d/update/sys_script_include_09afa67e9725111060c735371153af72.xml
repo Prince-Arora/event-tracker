@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_vmw_cloudservice.TelemetryDataCollector</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description>Script include to collect and format the telemetry data and make a POST call to VMware</description>
+        <name>TelemetryDataCollector</name>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2022-2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+var TelemetryDataCollector = Class.create();
+TelemetryDataCollector.prototype = {
+    initialize: function() {
+        this.appUtil = new CASAppUtil();
+    },
+
+    makeApiCall: function(endpoint, method, body, midserver) {
+
+        try {
+            var request = new sn_ws.RESTMessageV2();
+            if (body != '') {
+                request.setRequestBody(body);
+            }
+            if (midserver != '') {
+                request.setMIDServer(midserver);
+            }
+            request.setEndpoint(endpoint);
+            request.setHttpMethod(method);
+            request.setRequestHeader("Content-Type", "application/json");
+			request.setRequestHeader("x-source", "ITSM");
+            var response = request.execute();
+            return response;
+        } catch (e) {
+
+        }
+    },
+
+    collectData: function() {
+        var endPoint = '';
+        var orgIDs = [];
+        var table = gs.getProperty(this.appUtil.configuration.properties.telemetry_table);
+        var endPoints = new GlideAggregate("x_vmw_cloudservice_register_cas_organization");
+        endPoints.groupBy("u_organization_id");
+        endPoints.addAggregate("COUNT");
+        endPoints.query();
+        while (endPoints.next()) {
+            orgIDs.push(endPoints.u_organization_id + '');
+        }
+        for (var i = 0; i < orgIDs.length; i++) {
+            var entry = {
+                "@table": table
+            };
+            entry.org_id = orgIDs[i];
+            var instanceId = '';
+            var cloudSetup = false;
+            var endPointRecord = new GlideRecord("x_vmw_cloudservice_register_cas_organization");
+            endPointRecord.addQuery("u_organization_id", orgIDs[i]);
+            endPointRecord.setLimit(1);
+            endPointRecord.query();
+            if (endPointRecord.next()) {
+                if (endPointRecord.select_automation_service == "vRealiseAutomationCloud") {
+                    cloudSetup = true;
+                } else {
+                    if (endPointRecord.select_automation_service == "vrealizeAutomationService") {
+                        var host = endPointRecord.organization.hostname;
+                        var midserver = endPointRecord.organization.mid_server.name;
+                        endPoint = host + "/provisioning/mgmt/about";
+                        var onPremvRAResponse = this.makeApiCall(endPoint, "get", '', midserver);
+                        if (onPremvRAResponse != '' && onPremvRAResponse.getStatusCode() == 200) {
+                            var body = JSON.parse(onPremvRAResponse.getBody());
+                            if (body.productInstanceId != undefined && body.productInstanceId != '')
+                                instanceId = body.productInstanceId;
+                        }
+                    }
+                }
+            }
+
+            var projCount = new GlideAggregate("x_vmw_cloudservice_cas_project");
+            projCount.addQuery("organization_id", orgIDs[i]);
+            projCount.addAggregate("COUNT");
+            projCount.query();
+            if (projCount.next()) {
+                var numberProj = parseInt(projCount.getAggregate("COUNT"));
+            }
+            entry.projects = numberProj;
+
+            var deplCount = new GlideAggregate("x_vmw_cloudservice_deployments");
+            deplCount.addQuery("organization_id", orgIDs[i]);
+            deplCount.addQuery("operational_status", "1");
+            deplCount.addAggregate("COUNT");
+            deplCount.query();
+            if (deplCount.next()) {
+                var numberDepl = parseInt(deplCount.getAggregate("COUNT"));
+            }
+            entry.deployments = numberDepl;
+
+                var catCount = new GlideAggregate("x_vmw_cloudservice_cas_catalog_items");
+                catCount.addQuery("organisation_name.u_organization_id", orgIDs[i]);
+                catCount.addAggregate("COUNT");
+                catCount.query();
+				var count = 0;
+                if (catCount.next()) {
+                    count = count + parseInt(catCount.getAggregate("COUNT"));
+                }
+            entry.catalogs = count;
+
+            if (cloudSetup == true || cloudSetup == "true" || instanceId == undefined || instanceId == '' || instanceId == null) {
+                endPoint = gs.getProperty(this.appUtil.configuration.properties.telemetry_Collector_Url) +
+                    gs.getProperty(this.appUtil.configuration.properties.telemetryCollectorID) +
+                    "/batch";
+                this.makeApiCall(endPoint, "post", JSON.stringify(entry), '');
+            } else {
+                if (instanceId != undefined || instanceId != '' || instanceId == null) {
+                    endPoint = gs.getProperty(this.appUtil.configuration.properties.telemetry_Collector_Url) +
+                        gs.getProperty(this.appUtil.configuration.properties.telemetryCollectorID) + "/instances/" + instanceId + "/batch";
+                }
+				
+                this.makeApiCall(endPoint, "post", JSON.stringify(entry), '');
+            }
+        }
+    },
+
+    type: 'TelemetryDataCollector'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2022-08-30 07:28:07</sys_created_on>
+        <sys_id>09afa67e9725111060c735371153af72</sys_id>
+        <sys_mod_count>72</sys_mod_count>
+        <sys_name>TelemetryDataCollector</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sys_script_include_09afa67e9725111060c735371153af72</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-06-02 07:32:10</sys_updated_on>
+    </sys_script_include>
+</record_update>

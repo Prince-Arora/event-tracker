@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="update_synch=true" db_object_id="ceaa2ddbdb2233006adb48703996192c" extends="sc_cat_item" label="Catalog Items" max_length="40" name="x_vmw_cloudservice_cas_catalog_items" type="collection">
+        <element label="cat_action_schema" max_length="5000" name="cat_action_schema" type="string"/>
+        <element label="Deleted Version" max_length="1000000" name="u_deleted_version" read_only="true" type="string"/>
+        <element label="Uniquefiled" mandatory="true" max_length="10000" name="uniquefiled" type="string" unique="true"/>
+        <element label="UID" max_length="50" name="cas_uid" type="string"/>
+        <element label="Projects_Id" max_length="5000000" name="projects_id" type="string"/>
+        <element label="Versions" max_length="5000" name="versions" type="string"/>
+        <element label="Day2 Actions" max_length="100000" name="day2_actions" type="string"/>
+        <element attributes="edge_encryption_enabled=true" label="Endpoint" max_length="32" name="organisation_name" reference="x_vmw_cloudservice_register_cas_organization" type="reference"/>
+        <index name="index">
+            <element name="organisation_name"/>
+        </index>
+        <index name="index2" unique="true">
+            <element name="uniquefiled"/>
+        </index>
+    </element>
+</database>

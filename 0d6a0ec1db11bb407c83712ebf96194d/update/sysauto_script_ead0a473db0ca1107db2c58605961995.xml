@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sysauto_script">
+    <sysauto_script action="INSERT_OR_UPDATE">
+        <active>false</active>
+        <business_calendar/>
+        <condition/>
+        <conditional>false</conditional>
+        <entered_time>1970-01-01 00:00:00</entered_time>
+        <max_drift/>
+        <name>Delete Duplicates</name>
+        <offset/>
+        <offset_type>0</offset_type>
+        <run_as/>
+        <run_as_tz/>
+        <run_dayofmonth>1</run_dayofmonth>
+        <run_dayofweek>1</run_dayofweek>
+        <run_period/>
+        <run_start>2023-01-04 06:06:07</run_start>
+        <run_time>1970-01-01 08:00:00</run_time>
+        <run_type>on_demand</run_type>
+        <script><![CDATA[/************************************************************
+* Copyright (c) 2023 VMware, Inc. All Rights Reserved.
+* You may not use this product except in compliance with the License.
+* This product may include a number of subcomponents with separate copyright notices and license terms. Your use of these subcomponents is subject to the terms and conditions of the subcomponent's license, as noted in the LICENSE file.
+*************************************************************/
+
+(function() {
+    var appUtil = new CASAppUtil();
+    var variable = new CASDaoUtil();
+    try {
+        var configurationChecks = gs.getProperty(appUtil.configuration.properties.configurationCheck);
+        if (configurationChecks == 'true') {
+            CASLogger.debug('Inside Delete Duplicates');
+			variable.insert("deleteDuplicateVariables", " ", "", "");
+            variable.checkThreadLimit();
+        }
+    } catch (e) {
+        CASLogger.error("Exception caught inside Delete Duplicates" + e);
+    }
+
+})();]]></script>
+        <sys_class_name>sysauto_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2023-01-04 06:06:56</sys_created_on>
+        <sys_id>ead0a473db0ca1107db2c58605961995</sys_id>
+        <sys_mod_count>14</sys_mod_count>
+        <sys_name>Delete Duplicates</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>sysauto_script_ead0a473db0ca1107db2c58605961995</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2023-04-05 06:54:44</sys_updated_on>
+        <time_zone/>
+        <upgrade_safe>false</upgrade_safe>
+    </sysauto_script>
+</record_update>

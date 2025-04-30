@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="x_vmw_cloudservice_cas_project">
+    <x_vmw_cloudservice_cas_project action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <administrator_user/>
+        <cost>0 USD</cost>
+        <description/>
+        <entitlement_script/>
+        <header_icon/>
+        <homepage_image/>
+        <homepage_renderer display_value="Category Items">47ebe8aa3742300054b6a3549dbe5dfa</homepage_renderer>
+        <icon/>
+        <image/>
+        <last_cmdb_import_time>1970-01-01T03:00:00.000Z</last_cmdb_import_time>
+        <location/>
+        <member_user/>
+        <mobile_hide_description>false</mobile_hide_description>
+        <mobile_picture/>
+        <mobile_subcategory_render_type>list</mobile_subcategory_render_type>
+        <module/>
+        <order>0</order>
+        <organization display_value="8.18.1 - Data">eaad37fd83b46210c549bfc6feaad347</organization>
+        <organization_id>9c7adf46-ae6f-4258-8a94-804376f3e311</organization_id>
+        <parent display_value="VMware Aria Automation Items">30406d721bc2201002804196bc4bcb85</parent>
+        <project_description/>
+        <project_group/>
+        <project_id>018b119a-59c9-483d-9ce7-05aaacd1dc10</project_id>
+        <project_name>MAPBU-Users</project_name>
+        <roles/>
+        <sc_catalog display_value="Service Catalog">e0d08b13c3330100c8b837659bba8fb4</sc_catalog>
+        <sys_class_name>x_vmw_cloudservice_cas_project</sys_class_name>
+        <sys_created_by>system</sys_created_by>
+        <sys_created_on>2025-04-10 08:44:56</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_id>9400800a83786210c549bfc6feaad34e</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>MAPBU-Users</sys_name>
+        <sys_package display_value="VMware Aria Automation Plugin" source="x_vmw_cloudservice">0d6a0ec1db11bb407c83712ebf96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="VMware Aria Automation Plugin">0d6a0ec1db11bb407c83712ebf96194d</sys_scope>
+        <sys_update_name>x_vmw_cloudservice_cas_project_9400800a83786210c549bfc6feaad34e</sys_update_name>
+        <sys_updated_by>system</sys_updated_by>
+        <sys_updated_on>2025-04-10 08:44:56</sys_updated_on>
+        <title>MAPBU-Users</title>
+        <u_catalog_items>0</u_catalog_items>
+        <u_deployments>0</u_deployments>
+        <u_last_catalog_import_time>1970-01-01T03:00:00.000Z</u_last_catalog_import_time>
+    </x_vmw_cloudservice_cas_project>
+    <sys_translated_text action="delete_multiple" query="documentkey=9400800a83786210c549bfc6feaad34e"/>
+</record_update>
